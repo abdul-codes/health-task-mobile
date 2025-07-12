@@ -1,21 +1,23 @@
+import { registerSchema, type RegisterFormData } from '@/lib/validations';
+import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { useMutation } from '@tanstack/react-query';
+import axios from "axios";
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { router } from 'expo-router';
-import { useMutation } from '@tanstack/react-query';
-import api from '@/lib/api';
-import { registerSchema, type RegisterFormData } from '@/lib/validations';
+
+
 
 export default function RegisterScreen() {
   const [firstName, setFirstName] = useState('');
@@ -28,17 +30,20 @@ export default function RegisterScreen() {
 
   const roles = [
     { label: 'Select Role', value: '' },
-    { label: 'Doctor', value: 'doctor' },
-    { label: 'Nurse', value: 'nurse' },
-    { label: 'Lab Tech', value: 'labtech' },
+    { label: 'Admin', value: 'ADMIN' },
+    { label: 'Doctor', value: 'DOCTOR' },
+    { label: 'Nurse', value: 'NURSE' },
+    { label: 'Lab Tech', value: 'LABTECH' },
   ];
 
-  // Using the centralized validation schema from lib/validations.ts
-
+ 
   const registerMutation = useMutation({
     mutationFn: (data: RegisterFormData) => {
-      // Send firstName and lastName as separate fields to match your database model
-      return api.post("/auth/register", { 
+     // return axios.post(`${process.env.LOCALHOST_API}/auth/register`, { 
+      console.log("ENV:", process.env.LOCALHOST_API); // likely undefined
+      return axios.post("http://192.168.0.3:8000/auth/register", { 
+
+      // return axios.post("192.168.214.201:8000/auth/register", { 
         firstName: data.firstName, 
         lastName: data.lastName, 
         email: data.email, 
@@ -48,11 +53,20 @@ export default function RegisterScreen() {
     },
     onSuccess: () => {
       Alert.alert("Success", "Registration successful, please log in");
-      router.push("/login");
+      router.push("/(auth)/login");
     },
+    // onError: (error: any) => {
+    //   console.log(error);
+    //   console.error("Registration error", error);
+      
+    //   Alert.alert("Error", error.response?.data?.message);
+    //   setIsLoading(false);
+    //}
     onError: (error: any) => {
+    //  console.error("Registration error:", error.message, error.response?.data, error.response?.status);
       Alert.alert("Error", error.response?.data?.message || "Registration failed");
       setIsLoading(false);
+    
     },
   });
 
@@ -96,8 +110,10 @@ export default function RegisterScreen() {
             {/* Header */}
             <View className="mb-8">
               <View className="items-center mb-8">
-                <View className="w-20 h-20 bg-green-100 rounded-full items-center justify-center mb-4">
-                  <Ionicons name="person-add" size={40} color="#10B981" />
+                <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-4"> 
+                  {/* // former  bg-green-100 */}
+                  <Ionicons name="person-add" size={40} color="#3B82F6" /> 
+                  {/* // former green color="#10B981" */}
                 </View>
                 <Text className="text-3xl font-bold text-gray-900 mb-2">
                   Create Account
@@ -210,14 +226,14 @@ export default function RegisterScreen() {
                     </TouchableOpacity>
                   </View>
                   <Text className="text-gray-500 text-sm mt-1">
-                    Password must be at least 6 characters
+                  Password must include uppercase, lowercase, number, and special character
                   </Text>
                 </View>
 
                 {/* Register Button */}
                 <TouchableOpacity
                   className={`w-full py-4 rounded-xl items-center justify-center mt-6 ${
-                    isLoading || registerMutation.isPending ? 'bg-green-400' : 'bg-green-600'
+                    isLoading || registerMutation.isPending ? 'bg-blue-400' : 'bg-blue-600'
                   }`}
                   onPress={handleRegister}
                   disabled={isLoading || registerMutation.isPending}
@@ -240,6 +256,15 @@ export default function RegisterScreen() {
                     onPress={() => router.push('/login')}
                   >
                     <Text className="text-green-600 font-semibold">Sign In</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* Task Link */}
+                <View className="flex-row justify-center items-center mt-6">
+                  <Text className="text-gray-600">Checking Tasks</Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(tabs)')}
+                  >
+                    <Text className="text-green-600 font-semibold">Check</Text>
                   </TouchableOpacity>
                 </View>
               </View>

@@ -1,7 +1,9 @@
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Platform } from "react-native";
+
 const api = axios.create({
-  baseURL: "http://localhost:5000", // d URL from AuthContext
+  baseURL: Platform.OS === 'android' ? "http://10.0.2.2:8000" : "http://localhost:8000", 
   headers: {
     "Content-Type": "application/json",
   },
@@ -10,9 +12,18 @@ const api = axios.create({
 // Add a request interceptor to include the auth token in requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      // Get token from auth store storage
+      const authData = await AsyncStorage.getItem("auth-storage");
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        const token = parsed.state?.token;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting auth token:', error);
     }
     return config;
   },

@@ -1,26 +1,15 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router'; // Import router from expo-router
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router"; // Import router from expo-router
+import React from "react";
+import { SafeAreaView, Text, TouchableOpacity, View } from "react-native";
 import "../global.css";
 
-// Remove these React Navigation types - not needed with Expo Router
-// type RootStackParamList = {
-//   Login: undefined;
-//   Register: undefined;
-// };
-
-// type WelcomeScreenProps = {
-//   navigation: NativeStackNavigationProp<RootStackParamList>;
-// };
-
-// Remove the props parameter - Expo Router doesn't use navigation props
 const WelcomeScreen: React.FC = () => {
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background mb-36">
       {/* Header Section */}
       <LinearGradient
-        colors={['#2E7D9A', '#4A9FB8']}
+        colors={["#2E7D9A", "#4A9FB8"] }
         className="h-2/5 justify-center items-center px-5"
       >
         <View className="items-center">
@@ -29,7 +18,7 @@ const WelcomeScreen: React.FC = () => {
           </View>
           <Text className="text-3xl font-bold text-white mb-2">HealthTask</Text>
           <Text className="text-base text-white/90 text-center italic">
-            Managing Care, Streamlining Tasks
+            Managing Care, Streamlining Tasks, and Enhancing Patient Experience
           </Text>
         </View>
       </LinearGradient>
@@ -46,24 +35,24 @@ const WelcomeScreen: React.FC = () => {
           </Text>
 
           <View className="mb-5">
-            <FeatureItem 
-              icon="📋" 
-              title="Task Management" 
+            <FeatureItem
+              icon="📋"
+              title="Task Management"
               description="Assign and track tasks in real-time"
             />
-            <FeatureItem 
-              icon="🔔" 
-              title="Instant Notifications" 
+            <FeatureItem
+              icon="🔔"
+              title="Instant Notifications"
               description="Stay updated with critical alerts"
             />
-            <FeatureItem 
-              icon="👥" 
-              title="Team Collaboration" 
+            <FeatureItem
+              icon="👥"
+              title="Team Collaboration"
               description="Coordinate seamlessly with your team"
             />
-            <FeatureItem 
-              icon="🔒" 
-              title="Secure & Compliant" 
+            <FeatureItem
+              icon="🔒"
+              title="Secure & Compliant"
               description="HIPAA-compliant data protection"
             />
           </View>
@@ -71,32 +60,33 @@ const WelcomeScreen: React.FC = () => {
 
         {/* Action Buttons */}
         <View className="pb-8">
-          <TouchableOpacity 
+          <TouchableOpacity
             className="bg-primary py-4 rounded-xl mb-3 shadow-lg"
-            onPress={() => router.push('/login')} // Use router.push instead
+            onPress={() => router.push("/login")} // Use router.push instead
           >
             <Text className="text-white text-lg font-semibold text-center">
               Sign In
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          {/* <TouchableOpacity
             className="bg-white py-4 rounded-xl mb-3 border-2 border-primary"
-            onPress={() => router.push('/register')} // Use router.push instead
+            onPress={() => router.push("/register")} // Use router.push instead
           >
             <Text className="text-primary text-lg font-semibold text-center">
               Create Account
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
-          <TouchableOpacity 
+          {/* Testing Take a tour */}
+          {/* <TouchableOpacity
             className="py-3"
-            onPress={() => {/* Handle guest tour */}}
+            onPress={() => router.push("/tasks")}
           >
             <Text className="text-secondary text-base text-center underline">
-              Take a Tour
+              Take a Tour to Tasks
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </SafeAreaView>
@@ -109,16 +99,18 @@ type FeatureItemProps = {
   description: string;
 };
 
-const FeatureItem: React.FC<FeatureItemProps> = ({ icon, title, description }) => (
+const FeatureItem: React.FC<FeatureItemProps> = ({
+  icon,
+  title,
+  description,
+}) => (
   <View className="flex-row items-center py-3 px-4 bg-white rounded-xl mb-3 shadow-sm">
     <Text className="text-2xl mr-4">{icon}</Text>
     <View className="flex-1">
       <Text className="text-base font-semibold text-gray-800 mb-1">
         {title}
       </Text>
-      <Text className="text-sm text-secondary leading-4">
-        {description}
-      </Text>
+      <Text className="text-sm text-secondary leading-4">{description}</Text>
     </View>
   </View>
 );
