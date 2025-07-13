@@ -1,7 +1,7 @@
 import { io, Socket } from "socket.io-client";
 
 // Replace with your actual backend server URL in a .env file for production
-const SERVER_URL = "http://YOUR_LOCAL_IP_ADDRESS:8000"; 
+const SERVER_URL = "http://192.168.0.3:8000"; 
 
 let socket: Socket;
 

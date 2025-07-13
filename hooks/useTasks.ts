@@ -61,7 +61,7 @@ export const useTask = (taskId: string) => {
                 email: 'jane@example.com',
                 firstName: 'Jane',
                 lastName: 'Doe',
-                role: UserRole.DOCTOR,
+                role: UserRole.Doctor,
                 isApproved: true
             }
         },
@@ -71,7 +71,7 @@ export const useTask = (taskId: string) => {
             email: 'admin@example.com',
             firstName: 'Alice',
             lastName: 'Smith',
-            role: UserRole.ADMIN,
+            role: UserRole.Admin,
             isApproved: true
         }
     };

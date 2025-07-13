@@ -1,5 +1,5 @@
-import { useAuth } from "@/app/hooks/useAuth";
-import api from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+//import api from "@/lib/api";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
@@ -34,9 +34,9 @@ export default function LoginScreen() {
       return response.data;
     },
     onSuccess: async (data) => {
-      const { token, user } = data;
+      const { accessToken, refreshToken, user } = data;
 
-      setAuth(token, user);
+      setAuth(accessToken, refreshToken, user);
       router.replace("/(tabs)");
     },
     onError: (error: any) => {

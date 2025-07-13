@@ -1,123 +1,125 @@
+// --- Imports ---
+import { AppState, AppStateStatus, View, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react'; // Added useCallback
+// Corrected import path for the hook
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import api from '../lib/api';
+
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { router, Stack, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
 import "../global.css";
-import { AuthState, useAuth } from "./hooks/useAuth";
+import { useAuth } from "../hooks/useAuth";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { connectSocket, disconnectSocket } from "@/lib/clientsocket";
 import { Task } from "@/lib/types";
-//import SafeScreen from "./components/SafeScreen";
+// Import the 'shallow' middleware for Zustand
 
-// Create a client
-const mainqueryClient = new QueryClient({
+
+// --- Client Setup ---
+const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 1,
-    },
+    queries: { staleTime: 5 * 60 * 1000, retry: 1 },
   },
 });
 
+
+// --- Main Exported Component ---
 export default function RootLayout() {
-  const { isAuthenticated, token, user } = useAuth(
-    (state: AuthState) => ({
-      isAuthenticated: state.isAuthenticated,
-      token: state.token,
-      user: state.user,
-    })
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <SessionProvider>
+          <RootLayoutNav />
+        </SessionProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
-  const queryClient = useQueryClient()
-  
-  useEffect(() => {
-    if (isAuthenticated && token && user?.id) {
-      // Connect the socket and join user-specific room
-      const socket = connectSocket(token, user.id);
+}
 
-      // --- Set up event listeners ---
-      socket.on("newTask", (newTask: Task) => {
-        console.log("Received new task via WebSocket:", newTask);
-        
-        // Invalidate and refetch queries to update the UI
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["tasks-created-by-me"] });
 
-        // Optionally, show a local notification or toast
-        // (Push notifications are a separate implementation)
-      });
-      
-      return () => {
-        // --- Clean up listeners and disconnect ---
-        console.log("Cleaning up socket connection.");
-        socket.off("newTask");
-        disconnectSocket();
-      };
+// --- SessionProvider Component ---
+const SessionProvider = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = useAuth(state => state.isAuthenticated);
+  const { isOnline } = useNetworkStatus();
+  const [isAppReady, setAppReady] = useState(false);
+
+  const validateSession = useCallback(async () => {
+    if (isOnline === false) {
+      if (!isAppReady) setAppReady(true);
+      return;
     }
-  }, [isAuthenticated, token, user, queryClient]);
-  
-  // This effect will route the user based on authentication state
+    try {
+      await api.get('/auth/me');
+    } catch (error) {
+      console.log(`Session validation failed. Error: ${error}`);
+    } finally {
+      if (!isAppReady) setAppReady(true);
+    }
+  }, [isOnline, isAppReady]);
+
+  const handleAppStateChange = useCallback((nextAppState: AppStateStatus) => {
+    if (nextAppState === 'active') {
+      validateSession();
+    }
+  }, [validateSession]);
+
   useEffect(() => {
+    SplashScreen.preventAutoHideAsync();
+    validateSession();
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => { subscription.remove() };
+  }, [validateSession, handleAppStateChange]);
+  
+  useEffect(() => {
+    if (!isAppReady) return;
+    SplashScreen.hideAsync();
     if (isAuthenticated) {
       router.replace('/(tabs)/tasks');
     } else {
       router.replace('/');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAppReady]);
+
+  if (!isAppReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+
+// --- RootLayoutNav Component ---
+function RootLayoutNav() {
+  // const isAuthenticated = useAuth(state => state.isAuthenticated);
+  // const accessToken = useAuth(state => state.accessToken);
+  // const user = useAuth(state => state.user);
+  // const queryClient = useQueryClient();
+  
+  // useEffect(() => {
+  //   if (isAuthenticated && accessToken && user?.id) {
+  //     const socket = connectSocket(accessToken, user.id);
+  //     socket.on("newTask", (newTask: Task) => {
+  //       console.log("Received new task via WebSocket:", newTask);
+  //       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+  //     });
+  //     return () => {
+  //       socket.off("newTask");
+  //       disconnectSocket();
+  //     };
+  //   }
+  // }, [isAuthenticated, accessToken, user, queryClient]);
+  
   return (
-    <QueryClientProvider client={mainqueryClient}>
-        {/* <SafeScreen> */}
-      <SafeAreaProvider>
-          
-        <StatusBar style="auto" />
-        {/*
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="index"
-          options={{
-            title: 'Welcome',
-            headerShown: false,
-            // Prevent going back to welcome screen if authenticated
-            gestureEnabled: !isAuthenticated
-          }}
-        />
-        {/* <Stack.Screen
-          name="(auth)"
-          options={{
-            headerShown: false,
-            // Prevent going back to auth screens if authenticated
-            gestureEnabled: !isAuthenticated
-          }}
-        />
-
-        <Stack.Screen
-          name="index"
-          options={{
-            title: 'Dashboard',
-            headerShown: false,
-            // Prevent going back to auth screens if not authenticated
-            gestureEnabled: isAuthenticated
-          }}
-        />
-        <Stack.Screen
-          name="tasks"
-          options={{
-            headerShown: false,
-            // Only allow access to tasks if authenticated
-            gestureEnabled: isAuthenticated
-          }}
-        />
-      </Stack>
-       */}
-
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </SafeAreaProvider>
-      {/* </SafeScreen> */}
-
-    </QueryClientProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
   );
 }

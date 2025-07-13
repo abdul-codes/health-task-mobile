@@ -19,7 +19,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
-import useAuth from "../../hooks/useAuth";
+//import useAuth from "../../hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { TaskPriority, TaskStatus } from "@/lib/types";
 
@@ -62,15 +63,18 @@ const QuickDueButton: React.FC<{
 
 // Re-integrated Zod schema
 const createTaskSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters long"),
+  title: z.string().min(3, "Title must be at least 3 characters long").max(100, "Title cannot exceed 100 characters"),
   description: z
     .string()
     .min(10, "Description must be at least 10 characters long"),
   status: z.nativeEnum(TaskStatus),
   priority: z.nativeEnum(TaskPriority),
-  dueDate: z.string().datetime("Invalid due date"),
-  assignedToId: z.string().cuid().optional(),
-  patientId: z.string().cuid().optional(),
+  dueDate: z.string().datetime("Invalid due date").refine((val) => {
+    const date = new Date(val);
+    return !isNaN(date.getTime()) && date > new Date();
+  }, "Due date must be in the future"),
+  assignedToId: z.string().uuid("Invalid user ID format").optional(),
+  patientId: z.string().uuid("Invalid patient ID format").optional(),
 });
 
 type CreateTaskInput = z.infer<typeof createTaskSchema>;
@@ -87,7 +91,7 @@ const commonTaskTitles = [
 ];
 
 export default function CreateTaskScreen() {
-  const { token } = useAuth();
+  const { accessToken } = useAuth();
   const queryClient = useQueryClient();
   const titleInputRef = useRef<View>(null);
 
@@ -120,7 +124,7 @@ export default function CreateTaskScreen() {
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
     mutationFn: (taskData: CreateTaskInput) =>
       api.post("/tasks", taskData, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -140,23 +144,19 @@ export default function CreateTaskScreen() {
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["users"],
     queryFn: async (): Promise<User[]> => {
-      const response = await api.get("/users/dropdown", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
+      const response = await api.get("/users/dropdown")
+      return response.data.users; // Backend returns { users: [...] }
     },
-    enabled: !!token,
+    enabled: !!accessToken,
   });
 
   const { data: patients = [], isLoading: patientsLoading } = useQuery({
     queryKey: ["patients"],
     queryFn: async (): Promise<Patient[]> => {
-      const response = await api.get("/patients", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/patients")
       return response.data;
     },
-    enabled: !!token,
+    enabled: !!accessToken,
   });
 
   // Handlers
