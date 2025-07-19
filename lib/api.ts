@@ -1,6 +1,7 @@
 import useAuthStore from "@/hooks/useAuth";
 import axios, { AxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 // Add this at the top
 declare module "axios" {
@@ -9,11 +10,19 @@ declare module "axios" {
   }
 }
 
-const api = axios.create({
-  baseURL:
+export const getBaseUrl = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+
+  const host =
     Platform.OS === "android"
-      ? "http://192.168.0.3:8000"
-      : "http://localhost:8000",
+      ? (Constants.expoConfig?.hostUri?.split(":")[0] ?? "10.0.2.2")
+      : "localhost";
+  return `http://${host}:8000`;
+};
+
+const api = axios.create({
+  baseURL: getBaseUrl(),
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,7 +31,7 @@ const api = axios.create({
 // Add a request interceptor to include the auth token in requests
 api.interceptors.request.use(
   (config) => {
-    const accessToken = useAuthStore.getState().accessToken;
+    const {accessToken} = useAuthStore.getState();
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -34,6 +43,7 @@ api.interceptors.request.use(
 );
 
 let isRefreshing = false;
+let isLoggingOut = false; // prevents duplicate logout calls
 
 // Fixed
 type FailedQueueItem = {
@@ -59,13 +69,16 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config as AxiosRequestConfig & {
-      __isRetryRequest?: boolean;
+      _retry?: boolean;
     }; // Handle specific error cases here
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry
     ) {
+      // Avoid infinite loops
+      originalRequest._retry = true; // new change
+
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -77,24 +90,30 @@ api.interceptors.response.use(
         });
       }
 
-      originalRequest._retry   = true;
-      isRefreshing = true;
-
       const currentRefreshToken = useAuthStore.getState().refreshToken;
       if (!currentRefreshToken) {
-        useAuthStore.getState().logout();
+        if (!isLoggingOut) {
+          isLoggingOut = true;
+          useAuthStore.getState().logout();
+        }
         return Promise.reject(error);
       }
 
+      isRefreshing = true;
+
       try {
-        const response = await axios.post<{
-          accessToken: string;
-          refreshToken: string;
-        }>(`${api.defaults.baseURL}/auth/refresh`, {
-          refreshToken: currentRefreshToken,
-        });
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-          response.data;
+        // const response = await axios.post(
+        //        `${api.defaults.baseURL}/api/auth/refresh`,
+        //        { refreshToken: currentRefreshToken }
+        //      );
+        const { data } = await axios.post<{
+              accessToken: string;
+              refreshToken: string;
+            }>(`/api/auth/refresh`, { refreshToken: currentRefreshToken }, {
+              baseURL: getBaseUrl(), // FIX: Ensure refresh call also uses the dynamic URL
+            });
+
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken } = data;
 
         const user = useAuthStore.getState().user;
 
@@ -111,9 +130,11 @@ api.interceptors.response.use(
         }
         useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user!);
 
+        // Update original request with new token
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         }
+        // process queued requests
         processQueue(null, newAccessToken);
         return api(originalRequest);
       } catch (refreshError) {

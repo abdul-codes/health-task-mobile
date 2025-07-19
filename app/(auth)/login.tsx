@@ -26,7 +26,7 @@ export default function LoginScreen() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const response = await axios.post("http://192.168.0.3:8000/auth/login", {
+      const response = await axios.post("http://192.168.0.3:8000/api/auth/login", {
      // const response = await axios.post(`${LOCALHOST_API}/auth/login`, {
         email,
         password,

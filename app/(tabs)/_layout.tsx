@@ -47,22 +47,16 @@ export default function TabLayout() {
           ),
         }}
       />
-        <Tabs.Screen
-        name="tasks/[id]"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
     
-      {/* <Tabs.Screen
-        name="profile"
+       {/* <Tabs.Screen
+        name="Profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
-      /> */}
+      />  */}
     </Tabs>
   );
 }

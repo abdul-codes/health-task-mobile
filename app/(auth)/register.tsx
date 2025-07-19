@@ -41,7 +41,7 @@ export default function RegisterScreen() {
     mutationFn: (data: RegisterFormData) => {
      // return axios.post(`${process.env.LOCALHOST_API}/auth/register`, { 
       console.log("ENV:", process.env.LOCALHOST_API); // likely undefined
-      return axios.post("http://192.168.0.3:8000/auth/register", { 
+      return axios.post("http://192.168.0.3:8000/api/auth/register", { 
 
       // return axios.post("192.168.214.201:8000/auth/register", { 
         firstName: data.firstName, 

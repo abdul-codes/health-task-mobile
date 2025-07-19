@@ -29,6 +29,7 @@ interface User {
   id: string;
   firstName: string;
   lastName: string;
+  role: string;
 }
 
 interface Patient {
@@ -123,7 +124,7 @@ export default function CreateTaskScreen() {
   // Mutation for creating a task
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
     mutationFn: (taskData: CreateTaskInput) =>
-      api.post("/tasks", taskData, {
+      api.post("/api/tasks", taskData, {
         headers: { Authorization: `Bearer ${accessToken}` },
       }),
     onSuccess: () => {
@@ -140,20 +141,21 @@ export default function CreateTaskScreen() {
     },
   });
 
-  // Fetch Users and Patients
-  const { data: users = [], isLoading: usersLoading } = useQuery({
-    queryKey: ["users"],
-    queryFn: async (): Promise<User[]> => {
-      const response = await api.get("/users/dropdown")
-      return response.data.users; // Backend returns { users: [...] }
+  const { 
+    data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ["usersForDropdown"], // Using a more specific key is good practice
+    queryFn: async () => {
+      // Correctly handle the direct array response
+      const { data } = await api.get<User[]>("/api/users/dropdown");
+      return data || []; // Return the array directly, or an empty array as a fallback
     },
-    enabled: !!accessToken,
+    enabled: !!accessToken, // Your existing logic to enable the query
   });
 
   const { data: patients = [], isLoading: patientsLoading } = useQuery({
     queryKey: ["patients"],
     queryFn: async (): Promise<Patient[]> => {
-      const response = await api.get("/patients")
+      const response = await api.get("/api/patients/dropdown")
       return response.data;
     },
     enabled: !!accessToken,
@@ -476,7 +478,7 @@ export default function CreateTaskScreen() {
                 {users.map((user) => (
                   <Picker.Item
                     key={user.id}
-                    label={`${user.firstName} ${user.lastName}`}
+                    label={` ${user.role} ${user.firstName} ${user.lastName}`}
                     value={user.id}
                   />
                 ))}

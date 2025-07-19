@@ -1,125 +1,258 @@
-// --- Imports ---
-import { AppState, AppStateStatus, View, ActivityIndicator } from 'react-native';
-import { useState, useEffect, useCallback } from 'react'; // Added useCallback
-// Corrected import path for the hook
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import api from '../lib/api';
-
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { router, Stack, SplashScreen } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import "../global.css";
-import { useAuth } from "../hooks/useAuth";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  AppState,
+  AppStateStatus,
+  View,
+  ActivityIndicator,
+  Text,
+} from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { connectSocket, disconnectSocket } from "@/lib/clientsocket";
-import { Task } from "@/lib/types";
-// Import the 'shallow' middleware for Zustand
+import { StatusBar } from "expo-status-bar";
+import { Stack, SplashScreen, router } from "expo-router";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 
+import { queryClient } from "../lib/queryClient";
+import { useAuth } from "../hooks/useAuth";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import api from "../lib/api";
 
-// --- Client Setup ---
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 5 * 60 * 1000, retry: 1 },
-  },
-});
+import "../global.css";
 
+/* ------------------------------------------------------------------ */
+/* Error Boundary Fallback                                           */
+/* ------------------------------------------------------------------ */
+const ErrorFallback: React.FC<FallbackProps> = ({
+  error,
+  resetErrorBoundary,
+}) => (
+  <View style={styles.errorContainer}>
+    <Text style={styles.errorTitle}>Something went wrong</Text>
+    <Text style={styles.errorMessage}>
+      {error.message || "An unexpected error occurred"}
+    </Text>
+    <Text style={styles.retryButton} onPress={resetErrorBoundary}>
+      Try again
+    </Text>
+  </View>
+);
 
-// --- Main Exported Component ---
+/* ------------------------------------------------------------------ */
+/* Root Layout                                                        */
+/* ------------------------------------------------------------------ */
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <SessionProvider>
-          <RootLayoutNav />
-        </SessionProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={(error, errorInfo) => {
+        console.error("Error Boundary caught an error:", error, errorInfo);
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
+        <RootLayoutNav />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Navigation Logic                                                   */
+/* ------------------------------------------------------------------ */
+type SessionState = "loading" | "authenticated" | "unauthenticated" | "error";
 
-// --- SessionProvider Component ---
-const SessionProvider = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuth(state => state.isAuthenticated);
+function RootLayoutNav() {
   const { isOnline } = useNetworkStatus();
-  const [isAppReady, setAppReady] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const [sessionState, setSessionState] = useState<SessionState>("loading");
+  const [hasInitialized, setHasInitialized] = useState(false);
 
+  // Validate session on app start and resume
   const validateSession = useCallback(async () => {
     if (isOnline === false) {
-      if (!isAppReady) setAppReady(true);
+      // If offline but authenticated, allow access
+      if (isAuthenticated && user) {
+        setSessionState("authenticated");
+      } else {
+        setSessionState("unauthenticated");
+      }
       return;
     }
-    try {
-      await api.get('/auth/me');
-    } catch (error) {
-      console.log(`Session validation failed. Error: ${error}`);
-    } finally {
-      if (!isAppReady) setAppReady(true);
-    }
-  }, [isOnline, isAppReady]);
 
-  const handleAppStateChange = useCallback((nextAppState: AppStateStatus) => {
-    if (nextAppState === 'active') {
-      validateSession();
+    if (!isAuthenticated) {
+      setSessionState("unauthenticated");
+      return;
     }
+
+    try {
+      setSessionState("loading");
+      
+      // The api interceptor will handle token refresh automatically
+      await api.get("/api/auth/me");
+      
+      setSessionState("authenticated");
+    } catch (error: any) {
+      console.error("Session validation failed:", error);
+      
+      if (error.response?.status === 401) {
+        // Token refresh failed, user will be logged out by interceptor
+        setSessionState("unauthenticated");
+      } else {
+        // Network or other error - allow offline access if previously authenticated
+        if (user) {
+          setSessionState("authenticated");
+        } else {
+          setSessionState("error");
+        }
+      }
+    }
+    }, [isOnline, isAuthenticated, user])
+
+  // Initialize session on mount
+  useEffect(() => {
+    const initializeSession = async () => {
+      await validateSession();
+      setHasInitialized(true);
+      SplashScreen.hideAsync().catch(console.warn);
+    };
+
+    initializeSession();
   }, [validateSession]);
 
+  // Handle app state changes
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
-    validateSession();
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => { subscription.remove() };
-  }, [validateSession, handleAppStateChange]);
-  
-  useEffect(() => {
-    if (!isAppReady) return;
-    SplashScreen.hideAsync();
-    if (isAuthenticated) {
-      router.replace('/(tabs)/tasks');
-    } else {
-      router.replace('/');
-    }
-  }, [isAuthenticated, isAppReady]);
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active" && hasInitialized) {
+        validateSession();
+      }
+    };
 
-  if (!isAppReady) {
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => subscription?.remove();
+  }, [hasInitialized, validateSession]);
+
+  // Handle network status changes
+  useEffect(() => {
+    if (isOnline === true && hasInitialized) {
+      validateSession();
+    }
+  }, [isOnline, hasInitialized, validateSession]);
+
+  // Handle authentication state changes
+  useEffect(() => {
+    // if (hasInitialized) {
+    //   validateSession();
+    // }
+    // No need to re-validate on auth change, as the initial validation and app state changes cover it.
+      // If you *do* want to re-validate every time auth changes, you can add this back with `validateSession` as a dependency.
+  }, [isAuthenticated, hasInitialized]);
+
+  // Navigation effect
+  useEffect(() => {
+    if (!hasInitialized || sessionState === "loading") return;
+
+    try {
+      if (sessionState === "authenticated") {
+        router.replace("/(tabs)/tasks");
+      } else {
+        router.replace("/");
+      }
+    } catch (error) {
+      console.warn("Navigation failed:", error);
+    }
+  }, [sessionState, hasInitialized]);
+
+  // Loading screen
+  if (sessionState === "loading" || !hasInitialized) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  return <>{children}</>;
-};
-
-
-// --- RootLayoutNav Component ---
-function RootLayoutNav() {
-  // const isAuthenticated = useAuth(state => state.isAuthenticated);
-  // const accessToken = useAuth(state => state.accessToken);
-  // const user = useAuth(state => state.user);
-  // const queryClient = useQueryClient();
-  
-  // useEffect(() => {
-  //   if (isAuthenticated && accessToken && user?.id) {
-  //     const socket = connectSocket(accessToken, user.id);
-  //     socket.on("newTask", (newTask: Task) => {
-  //       console.log("Received new task via WebSocket:", newTask);
-  //       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-  //     });
-  //     return () => {
-  //       socket.off("newTask");
-  //       disconnectSocket();
-  //     };
-  //   }
-  // }, [isAuthenticated, accessToken, user, queryClient]);
-  
+  // Main app render
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <SafeAreaProvider>
+      <StatusBar style="auto" />
+      <NetworkStatusIndicator isOnline={isOnline ?? true} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
+/* ------------------------------------------------------------------ */
+/* Network Status Indicator                                          */
+/* ------------------------------------------------------------------ */
+interface NetworkStatusIndicatorProps {
+  isOnline: boolean;
+}
+
+const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = React.memo(
+  ({ isOnline }) => {
+    if (isOnline === false) {
+      return (
+        <View style={styles.offlineIndicator}>
+          <Text style={styles.offlineText}>No internet connection</Text>
+        </View>
+      );
+    }
+    return null;
+  }
+);
+
+NetworkStatusIndicator.displayName = "NetworkStatusIndicator";
+
+/* ------------------------------------------------------------------ */
+/* Styles                                                             */
+/* ------------------------------------------------------------------ */
+const styles = {
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    padding: 20,
+    backgroundColor: "#f5f5f5",
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: "bold" as const,
+    marginBottom: 10,
+    color: "#333",
+  },
+  errorMessage: {
+    textAlign: "center" as const,
+    marginBottom: 20,
+    color: "#666",
+    lineHeight: 20,
+  },
+  retryButton: {
+    color: "#007AFF",
+    textDecorationLine: "underline" as const,
+    fontSize: 16,
+    fontWeight: "600" as const,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    backgroundColor: "#f5f5f5",
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#666",
+  },
+  offlineIndicator: {
+    backgroundColor: "#ff6b6b",
+    padding: 8,
+    alignItems: "center" as const,
+  },
+  offlineText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "500" as const,
+  },
+};
