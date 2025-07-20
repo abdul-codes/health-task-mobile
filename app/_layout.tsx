@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  AppState,
-  AppStateStatus,
-  View,
-  ActivityIndicator,
-  Text,
-} from "react-native";
+import { AppState, AppStateStatus, View, ActivityIndicator, Text, StyleSheet, } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Stack, SplashScreen, router } from "expo-router";
@@ -199,8 +193,7 @@ const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> =
 
 NetworkStatusIndicator.displayName = "NetworkStatusIndicator";
 
-// Styles
-const styles = {
+const styles = StyleSheet.create({
   errorContainer: {
     flex: 1,
     justifyContent: "center" as const,
