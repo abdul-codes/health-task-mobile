@@ -10,14 +10,37 @@ declare module "axios" {
   }
 }
 
-export const getBaseUrl = (): string => {
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+// export const getBaseUrl = (): string => {
+//   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
 
-  const host =
-    Platform.OS === "android"
-      ? (Constants.expoConfig?.hostUri?.split(":")[0] ?? "10.0.2.2")
-      : "localhost";
-  return `http://${host}:8000`;
+//   const host =
+//     Platform.OS === "android"
+//       ? (Constants.expoConfig?.hostUri?.split(":")[0] ?? "10.0.2.2")
+//       : "localhost";
+//   return `http://${host}:8000`;
+// };
+// lib/env.ts
+
+export const getBaseUrl = (): string => {
+  // 1. explicit env var (works in both dev & prod)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    console.log("🔗 Using EXPO_PUBLIC_API_URL:", process.env.EXPO_PUBLIC_API_URL);
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  // 2. running inside Expo Go / dev-client?
+  const hostUri = Constants.expoConfig?.hostUri; // "192.168.1.25:8081"
+  const lanIp = hostUri?.split(":")[0];
+
+  if (lanIp) {
+    console.log("🔗 Using LAN IP from Metro:", `http://${lanIp}:8000`);
+    return `http://${lanIp}:8000`;
+  }
+
+  // 3. fallback for simulators / CI
+  const fallbackHost = Platform.OS === "android" ? "10.0.2.2" : "localhost";
+  console.log("🔗 Using fallback host:", `http://${fallbackHost}:8000`);
+  return `http://${fallbackHost}:8000`;
 };
 
 const api = axios.create({
@@ -106,12 +129,13 @@ api.interceptors.response.use(
         //        `${api.defaults.baseURL}/api/auth/refresh`,
         //        { refreshToken: currentRefreshToken }
         //      );
-        const { data } = await axios.post<{
-              accessToken: string;
-              refreshToken: string;
-            }>(`/auth/refresh`, { refreshToken: currentRefreshToken }, {
-              baseURL: getBaseUrl(), // FIX: Ensure refresh call also uses the dynamic URL
-            });
+        // const { data } = await axios.post<{
+        //       accessToken: string;
+        //       refreshToken: string;
+        //     }>(`/auth/refresh`, { refreshToken: currentRefreshToken }, {
+        //       baseURL: getBaseUrl(), // FIX: Ensure refresh call also uses the dynamic URL
+        //     });
+        const { data } = await api.post("/auth/refresh", { refreshToken: currentRefreshToken });
 
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = data;
 

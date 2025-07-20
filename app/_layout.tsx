@@ -2,15 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { AppState, AppStateStatus, View, ActivityIndicator, Text, StyleSheet, } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Stack, SplashScreen, router } from "expo-router";
+import { Stack, SplashScreen, useSegments, useRouter } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-
 import { queryClient } from "../lib/queryClient";
 import { useAuth } from "../hooks/useAuth";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
-
 import "../global.css";
 
 //Error Boundary Fallback                                           */
@@ -28,6 +26,29 @@ const ErrorFallback: React.FC<FallbackProps> = ({
     </Text>
   </View>
 );
+
+// Navigation effect
+// --- New Hook to handle protected routing ---
+function useProtectedRoute(sessionState: SessionState) {
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    const inTabsGroup = segments[0] === "(tabs)";
+
+    // If the session is still loading, do nothing.
+    if (sessionState === 'loading') return;
+
+    if (sessionState === "authenticated" && !inTabsGroup) {
+      // Redirect to the dashboard if the user is authenticated but not in the main app area.
+      router.replace("/(tabs)/dashboard");
+    } else if (sessionState === "unauthenticated" && inTabsGroup) {
+      // Redirect to the login screen if the user is not authenticated but somehow in the main app area.
+      router.replace("/");
+    }
+
+  }, [sessionState, segments, router]);
+}
 
 //Root Layout                                                        */
 export default function RootLayout() {
@@ -120,6 +141,8 @@ function RootLayoutNav() {
     );
     return () => subscription?.remove();
   }, [hasInitialized, validateSession]);
+  
+  useProtectedRoute(sessionState);
 
   // Handle network status changes
   useEffect(() => {
@@ -137,20 +160,7 @@ function RootLayoutNav() {
     // If you *do* want to re-validate every time auth changes, you can add this back with `validateSession` as a dependency.
   }, [isAuthenticated, hasInitialized]);
 
-  // Navigation effect
-  useEffect(() => {
-    if (!hasInitialized || sessionState === "loading") return;
 
-    try {
-      if (sessionState === "authenticated") {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/");
-      }
-    } catch (error) {
-      console.warn("Navigation failed:", error);
-    }
-  }, [sessionState, hasInitialized]);
 
   // Loading screen
   if (sessionState === "loading" || !hasInitialized) {
@@ -169,7 +179,7 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
       </Stack>
     </SafeAreaProvider>
   );
@@ -239,4 +249,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500" as const,
   },
-};
+});
+
+//Error Boundary Fallback                                           */

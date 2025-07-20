@@ -1,16 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import  api  from "@/lib/api"
+import api from "@/lib/api";
 import { Link, useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
-  SafeAreaView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // NOTE: This type is based on the `getAllPatients` controller response.
 // It currently fetches all patients from the database. To show patients
@@ -30,33 +31,44 @@ type Patient = {
 // Fetches the list of all patients from the backend
 const fetchPatients = async (): Promise<Patient[]> => {
   // Using the same hardcoded IP as in other files. This should be moved to an env variable.
+ try{
+   
   const { data } = await api.get("/patients");
   return data;
+ } catch(error){
+   console.error("Failed to fetch patients:", error);
+   Alert.alert("Error", "Failed to fetch patients");
+   throw error;
+ }
 };
 
 // A card component to display individual patient information
 const PatientCard = ({ item }: { item: Patient }) => (
-  <View className="bg-white p-4 rounded-xl shadow-sm mb-4">
-    <View className="flex-row items-center">
-      <View className="w-12 h-12 rounded-full bg-blue-100 items-center justify-center mr-4">
-        <Ionicons name="person-outline" size={28} color="#3B82F6" />
-      </View>
-      <View className="flex-1">
-        <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
-        <Text className="text-sm text-gray-600 mt-1">
-          DOB: {new Date(item.dob).toLocaleDateString()}
-        </Text>
-      </View>
-      {item.roomNumber && (
-        <View className="flex-row items-center bg-gray-100 px-3 py-1 rounded-full">
-          <Ionicons name="bed-outline" size={16} color="#4B5563" />
-          <Text className="text-sm font-semibold text-gray-700 ml-1">
-            {item.roomNumber}
-          </Text>
+  <Link href={{ pathname: "/patients/[id]", params: { id: item.id } }} asChild>
+    <TouchableOpacity>
+      <View className="bg-white p-4 rounded-xl shadow-sm mb-4">
+        <View className="flex-row items-center">
+          <View className="w-12 h-12 rounded-full bg-blue-100 items-center justify-center mr-4">
+            <Ionicons name="person-outline" size={28} color="#3B82F6" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-gray-800">{item.name}</Text>
+            <Text className="text-sm text-gray-600 mt-1">
+              DOB: {new Date(item.dob).toLocaleDateString()}
+            </Text>
+          </View>
+          {item.roomNumber && (
+            <View className="flex-row items-center bg-gray-100 px-3 py-1 rounded-full">
+              <Ionicons name="bed-outline" size={16} color="#4B5563" />
+              <Text className="text-sm font-semibold text-gray-700 ml-1">
+                {item.roomNumber}
+              </Text>
+            </View>
+          )}
         </View>
-      )}
-    </View>
-  </View>
+      </View>
+    </TouchableOpacity>
+  </Link>
 );
 
 export default function PatientsScreen() {
@@ -118,7 +130,7 @@ export default function PatientsScreen() {
             No Patients Found
           </Text>
           <Text className="text-gray-500 mt-1">
-            Tap the `+ button to add the first patient.
+            Tap the + button to add the first patient.
           </Text>
         </View>
       );
@@ -138,7 +150,7 @@ export default function PatientsScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="px-4 pt-4 pb-2 flex-row justify-between items-center bg-gray-50">
         <Text className="text-3xl font-bold text-gray-900">Patients</Text>
-        <Link href="/patients/create">
+        <Link href="/patients/create" asChild>
           <TouchableOpacity className="bg-blue-600 w-10 h-10 rounded-full items-center justify-center shadow">
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>

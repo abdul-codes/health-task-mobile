@@ -1,5 +1,6 @@
 //import api from '@/lib/api';
 import { secureStorage } from '@/lib/itemStore';
+import { queryClient } from '@/lib/queryClient';
 import { User } from '@/lib/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -26,6 +27,7 @@ const useAuthStore = create<AuthState>()(
       },
       logout: () => {
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        queryClient.clear()
       },
     }),
     {

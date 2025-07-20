@@ -30,7 +30,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="tasks/index"
+        name="tasks"
         options={{
           title: 'Tasks',
           tabBarIcon: ({ color, size }) => (
@@ -39,7 +39,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="patients/index"
+        name="patients"
         options={{
           title: 'Patients',
           tabBarIcon: ({ color, size }) => (
