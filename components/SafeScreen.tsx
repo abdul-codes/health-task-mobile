@@ -8,7 +8,7 @@ export default function SafeScreen({ children }: { children: React.ReactNode }) 
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
       {children}
     </SafeAreaView>
-  );
+  ); 
 }
 
 const styles = StyleSheet.create({

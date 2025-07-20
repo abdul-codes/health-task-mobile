@@ -37,7 +37,7 @@ type User = {
 
 const fetchAssignableUsers = async (): Promise<User[]> => {
   const { data } = await api.get<User[]>("/users/dropdown"); // Direct array response
-  console.log("fetchAssignableUsers",data);
+  // console.log("fetchAssignableUsers",data);
   return data || [];
 };
 
@@ -172,6 +172,14 @@ export default function CreatePatientScreen() {
     queryKey: ["assignableUsers"],
     queryFn: fetchAssignableUsers,
   });
+  
+  const resetForm = () => {
+    setName("");
+    setDob(undefined);
+    setRoomNumber("");
+    setMedicalRecord("");
+    setSelectedUserIds([]);
+  };
 
   // Create patient mutation
   const createPatientMutation = useMutation({
@@ -184,6 +192,7 @@ export default function CreatePatientScreen() {
         { 
           text: "OK", 
           onPress: () => {
+            resetForm()
             if (router.canGoBack()) {
               router.back();
             } else {
