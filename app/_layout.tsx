@@ -19,9 +19,7 @@ import api from "../lib/api";
 
 import "../global.css";
 
-/* ------------------------------------------------------------------ */
-/* Error Boundary Fallback                                           */
-/* ------------------------------------------------------------------ */
+//Error Boundary Fallback                                           */
 const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
@@ -37,9 +35,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   </View>
 );
 
-/* ------------------------------------------------------------------ */
-/* Root Layout                                                        */
-/* ------------------------------------------------------------------ */
+//Root Layout                                                        */
 export default function RootLayout() {
   return (
     <ErrorBoundary
@@ -55,9 +51,7 @@ export default function RootLayout() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Navigation Logic                                                   */
-/* ------------------------------------------------------------------ */
+//Navigation Logic                                                   */
 type SessionState = "loading" | "authenticated" | "unauthenticated" | "error";
 
 function RootLayoutNav() {
@@ -85,14 +79,14 @@ function RootLayoutNav() {
 
     try {
       setSessionState("loading");
-      
+
       // The api interceptor will handle token refresh automatically
-      await api.get("/api/auth/me");
-      
+      await api.get("/auth/me");
+
       setSessionState("authenticated");
     } catch (error: any) {
       console.error("Session validation failed:", error);
-      
+
       if (error.response?.status === 401) {
         // Token refresh failed, user will be logged out by interceptor
         setSessionState("unauthenticated");
@@ -105,7 +99,7 @@ function RootLayoutNav() {
         }
       }
     }
-    }, [isOnline, isAuthenticated, user])
+  }, [isOnline, isAuthenticated, user]);
 
   // Initialize session on mount
   useEffect(() => {
@@ -126,7 +120,10 @@ function RootLayoutNav() {
       }
     };
 
-    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
     return () => subscription?.remove();
   }, [hasInitialized, validateSession]);
 
@@ -143,7 +140,7 @@ function RootLayoutNav() {
     //   validateSession();
     // }
     // No need to re-validate on auth change, as the initial validation and app state changes cover it.
-      // If you *do* want to re-validate every time auth changes, you can add this back with `validateSession` as a dependency.
+    // If you *do* want to re-validate every time auth changes, you can add this back with `validateSession` as a dependency.
   }, [isAuthenticated, hasInitialized]);
 
   // Navigation effect
@@ -152,7 +149,7 @@ function RootLayoutNav() {
 
     try {
       if (sessionState === "authenticated") {
-        router.replace("/(tabs)/tasks");
+        router.replace("/dashboard");
       } else {
         router.replace("/");
       }
@@ -171,7 +168,6 @@ function RootLayoutNav() {
     );
   }
 
-  // Main app render
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
@@ -184,15 +180,13 @@ function RootLayoutNav() {
     </SafeAreaProvider>
   );
 }
-/* ------------------------------------------------------------------ */
-/* Network Status Indicator                                          */
-/* ------------------------------------------------------------------ */
+// Network Status Indicator
 interface NetworkStatusIndicatorProps {
   isOnline: boolean;
 }
 
-const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = React.memo(
-  ({ isOnline }) => {
+const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> =
+  React.memo(({ isOnline }) => {
     if (isOnline === false) {
       return (
         <View style={styles.offlineIndicator}>
@@ -201,14 +195,11 @@ const NetworkStatusIndicator: React.FC<NetworkStatusIndicatorProps> = React.memo
       );
     }
     return null;
-  }
-);
+  });
 
 NetworkStatusIndicator.displayName = "NetworkStatusIndicator";
 
-/* ------------------------------------------------------------------ */
-/* Styles                                                             */
-/* ------------------------------------------------------------------ */
+// Styles
 const styles = {
   errorContainer: {
     flex: 1,

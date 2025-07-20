@@ -2,7 +2,7 @@
 
 # dependencies
 node_modules/
-
+.aiexclude
 # Expo
 .expo/
 dist/

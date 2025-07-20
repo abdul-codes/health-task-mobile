@@ -36,7 +36,7 @@ type User = {
 };
 
 const fetchAssignableUsers = async (): Promise<User[]> => {
-  const { data } = await api.get<User[]>("/api/users/dropdown"); // Direct array response
+  const { data } = await api.get<User[]>("/users/dropdown"); // Direct array response
   console.log("fetchAssignableUsers",data);
   return data || [];
 };
@@ -175,7 +175,7 @@ export default function CreatePatientScreen() {
 
   // Create patient mutation
   const createPatientMutation = useMutation({
-    mutationFn: (data: PatientFormData) => api.post("/api/patients", data),
+    mutationFn: (data: PatientFormData) => api.post("/patients", data),
     onSuccess: () => {
       // Invalidate patient queries
       queryClient.invalidateQueries({ queryKey: ['patients'] });

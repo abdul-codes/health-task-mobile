@@ -74,8 +74,8 @@ const createTaskSchema = z.object({
     const date = new Date(val);
     return !isNaN(date.getTime()) && date > new Date();
   }, "Due date must be in the future"),
-  assignedToId: z.string().uuid("Invalid user ID format").optional(),
-  patientId: z.string().uuid("Invalid patient ID format").optional(),
+  assignedToId: z.string().cuid("Invalid user ID format").optional(),
+  patientId: z.string().cuid("Invalid patient ID format").optional(),
 });
 
 type CreateTaskInput = z.infer<typeof createTaskSchema>;
@@ -124,13 +124,14 @@ export default function CreateTaskScreen() {
   // Mutation for creating a task
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
     mutationFn: (taskData: CreateTaskInput) =>
-      api.post("/api/tasks", taskData, {
+      api.post("/tasks", taskData, {
         headers: { Authorization: `Bearer ${accessToken}` },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      router.replace("/(tabs)/tasks");
+      router.replace("/tasks");
       Alert.alert("Success", "Task created successfully!");
+      resetForm();
     },
     onError: (error: any) => {
       const message =
@@ -140,13 +141,27 @@ export default function CreateTaskScreen() {
       Alert.alert("Error", message);
     },
   });
+  
+  const resetForm = () => {
+     setFormData({
+       title: "",
+       description: "",
+       status: TaskStatus.PENDING,
+       priority: TaskPriority.MEDIUM,
+       dueDate: new Date(),
+       assignedToId: "",
+       patientId: "",
+     });
+     setDueDateOption("custom");
+     setErrors({});
+   };
 
   const { 
     data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["usersForDropdown"], // Using a more specific key is good practice
     queryFn: async () => {
       // Correctly handle the direct array response
-      const { data } = await api.get<User[]>("/api/users/dropdown");
+      const { data } = await api.get<User[]>("/users/dropdown");
       return data || []; // Return the array directly, or an empty array as a fallback
     },
     enabled: !!accessToken, // Your existing logic to enable the query
@@ -155,7 +170,7 @@ export default function CreateTaskScreen() {
   const { data: patients = [], isLoading: patientsLoading } = useQuery({
     queryKey: ["patients"],
     queryFn: async (): Promise<Patient[]> => {
-      const response = await api.get("/api/patients/dropdown")
+      const response = await api.get("/patients/dropdown")
       return response.data;
     },
     enabled: !!accessToken,

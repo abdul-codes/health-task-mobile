@@ -1,6 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-//import api from "@/lib/api";
-import axios from "axios";
+import api from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -26,7 +25,8 @@ export default function LoginScreen() {
 
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const response = await axios.post("http://192.168.0.3:8000/api/auth/login", {
+      // use api.post
+      const response = await api.post("/auth/login", {
      // const response = await axios.post(`${LOCALHOST_API}/auth/login`, {
         email,
         password,
@@ -37,7 +37,8 @@ export default function LoginScreen() {
       const { accessToken, refreshToken, user } = data;
 
       setAuth(accessToken, refreshToken, user);
-      router.replace("/(tabs)");
+      // handled by root layout
+     // router.replace("/dashboard"); 
     },
     onError: (error: any) => {
       Alert.alert("Error", error.response?.data?.message || "Login failed");

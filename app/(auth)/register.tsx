@@ -1,8 +1,9 @@
+import api from '@/lib/api';
 import { registerSchema, type RegisterFormData } from '@/lib/validations';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useMutation } from '@tanstack/react-query';
-import axios from "axios";
+
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -40,8 +41,7 @@ export default function RegisterScreen() {
   const registerMutation = useMutation({
     mutationFn: (data: RegisterFormData) => {
      // return axios.post(`${process.env.LOCALHOST_API}/auth/register`, { 
-      console.log("ENV:", process.env.LOCALHOST_API); // likely undefined
-      return axios.post("http://192.168.0.3:8000/api/auth/register", { 
+      return api.post("/auth/register", { 
 
       // return axios.post("192.168.214.201:8000/auth/register", { 
         firstName: data.firstName, 
@@ -53,15 +53,8 @@ export default function RegisterScreen() {
     },
     onSuccess: () => {
       Alert.alert("Success", "Registration successful, please log in");
-      router.push("/(auth)/login");
+      router.push("/login");
     },
-    // onError: (error: any) => {
-    //   console.log(error);
-    //   console.error("Registration error", error);
-      
-    //   Alert.alert("Error", error.response?.data?.message);
-    //   setIsLoading(false);
-    //}
     onError: (error: any) => {
     //  console.error("Registration error:", error.message, error.response?.data, error.response?.status);
       Alert.alert("Error", error.response?.data?.message || "Registration failed");
@@ -262,7 +255,7 @@ export default function RegisterScreen() {
                 <View className="flex-row justify-center items-center mt-6">
                   <Text className="text-gray-600">Checking Tasks</Text>
                   <TouchableOpacity
-                    onPress={() => router.push('/(tabs)')}
+                    onPress={() => router.push('/dashboard')}
                   >
                     <Text className="text-green-600 font-semibold">Check</Text>
                   </TouchableOpacity>

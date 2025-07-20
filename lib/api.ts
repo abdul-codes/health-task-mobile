@@ -109,7 +109,7 @@ api.interceptors.response.use(
         const { data } = await axios.post<{
               accessToken: string;
               refreshToken: string;
-            }>(`/api/auth/refresh`, { refreshToken: currentRefreshToken }, {
+            }>(`/auth/refresh`, { refreshToken: currentRefreshToken }, {
               baseURL: getBaseUrl(), // FIX: Ensure refresh call also uses the dynamic URL
             });
 

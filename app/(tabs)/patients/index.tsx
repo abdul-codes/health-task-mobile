@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import  api  from "@/lib/api"
 import { Link, useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import {
@@ -30,7 +30,7 @@ type Patient = {
 // Fetches the list of all patients from the backend
 const fetchPatients = async (): Promise<Patient[]> => {
   // Using the same hardcoded IP as in other files. This should be moved to an env variable.
-  const { data } = await axios.get("http://192.168.0.3:8000/api/patients");
+  const { data } = await api.get("/patients");
   return data;
 };
 
@@ -138,7 +138,7 @@ export default function PatientsScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="px-4 pt-4 pb-2 flex-row justify-between items-center bg-gray-50">
         <Text className="text-3xl font-bold text-gray-900">Patients</Text>
-        <Link href="/(tabs)/patients/create">
+        <Link href="/patients/create">
           <TouchableOpacity className="bg-blue-600 w-10 h-10 rounded-full items-center justify-center shadow">
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
