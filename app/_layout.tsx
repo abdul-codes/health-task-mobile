@@ -1,15 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AppState, AppStateStatus, View, ActivityIndicator, Text, StyleSheet, } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import {PersistQueryClientProvider} from "@tanstack/react-query-persist-client";
+import {createAsyncStoragePersister} from "@tanstack/query-async-storage-persister";
 import { StatusBar } from "expo-status-bar";
 import { Stack, SplashScreen, useSegments, useRouter } from "expo-router";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { queryClient } from "../lib/queryClient";
 import { useAuth } from "../hooks/useAuth";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
 import "../global.css";
+import { mmkvStorage } from "@/lib/mmkvStorage";
+
+const mmkvAsyncPersister = createAsyncStoragePersister({
+  storage: mmkvStorage,
+});
 
 //Error Boundary Fallback                                           */
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -59,9 +65,9 @@ export default function RootLayout() {
         console.error("Error Boundary caught an error:", error, errorInfo);
       }}
     >
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{persister: mmkvAsyncPersister}}>
         <RootLayoutNav />
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 }

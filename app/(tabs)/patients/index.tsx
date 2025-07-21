@@ -44,7 +44,7 @@ const fetchPatients = async (): Promise<Patient[]> => {
 
 // A card component to display individual patient information
 const PatientCard = ({ item }: { item: Patient }) => (
-  <Link href={{ pathname: "/patients/[id]", params: { id: item.id } }} asChild>
+  <Link href={{ pathname: "/patients/[id]", params: { id: item.id, name: item.name } }} asChild>
     <TouchableOpacity>
       <View className="bg-white p-4 rounded-xl shadow-sm mb-4">
         <View className="flex-row items-center">

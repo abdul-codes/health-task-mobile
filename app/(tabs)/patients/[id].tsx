@@ -90,7 +90,7 @@ const getAge = (dobString: string) => {
 };
 
 export default function PatientDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, name } = useLocalSearchParams<{ id: string, name?: string }>();
 
   const { data: patient, isLoading, isError, error, refetch } = useQuery<PatientDetail, Error>({
     queryKey: ["patient", id],
@@ -197,7 +197,7 @@ export default function PatientDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <Stack.Screen options={{ title: patient.name, headerBackTitle: "Patients" }} />
+      <Stack.Screen options={{ title: patient.name || name || 'Patient Details',  headerBackTitle: "Patients" }} />
 
       <FlatList
         data={patient.tasks}
