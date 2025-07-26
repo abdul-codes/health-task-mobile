@@ -97,7 +97,6 @@ const commonTaskTitles = [
 export default function CreateTaskScreen() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
-  const titleInputRef = useRef<View>(null);
   const params = useLocalSearchParams<{
     patientId?: string;
     patientName?: string;
@@ -111,7 +110,7 @@ export default function CreateTaskScreen() {
     priority: TaskPriority.MEDIUM,
     dueDate: new Date(),
     assignedToId: "",
-    patientId: ""
+    patientId:""
   });
 
   // UI state
@@ -120,7 +119,8 @@ export default function CreateTaskScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);  
+  const titleInputRef = useRef<TextInput>(null);
   const [titleInputPosition, setTitleInputPosition] = useState({
     pageX: 0,
     pageY: 0,
@@ -215,20 +215,13 @@ export default function CreateTaskScreen() {
   // Handlers
   const handleTitleChange = (text: string) => {
     updateField("title", text);
-    if (text.length > 0) {
+    if (text.length > 1) {
       const filtered = commonTaskTitles.filter((task) =>
         task.toLowerCase().includes(text.toLowerCase()),
       );
       setSuggestions(filtered);
 
-      if (filtered.length > 0) {
-        if (!isSuggestionsVisible) {
-          measureTitleInput();
-          setIsSuggestionsVisible(true);
-        }
-      } else {
-        setIsSuggestionsVisible(false);
-      }
+      setIsSuggestionsVisible(filtered.length > 0 && filtered.length < commonTaskTitles.length);
     } else {
       setSuggestions([]);
       setIsSuggestionsVisible(false);
@@ -238,6 +231,7 @@ export default function CreateTaskScreen() {
   const handleSuggestionSelect = (title: string) => {
     updateField("title", title);
     setIsSuggestionsVisible(false);
+     titleInputRef.current?.blur(); // Blur the input to signify completion
   };
 
   const measureTitleInput = () => {
@@ -245,12 +239,26 @@ export default function CreateTaskScreen() {
       setTitleInputPosition({ pageX, pageY, width, height });
     });
   };
+  
+  
+  const handleFocus = () => {
+    measureTitleInput();
+    // Show suggestions on focus if there's already text
+    if (formData.title.length > 0) {
+      setIsSuggestionsVisible(true);
+    }
+  };
+
+  const handleBlur = () => {
+    // Hide suggestions when the input loses focus
+    setIsSuggestionsVisible(false);
+  };
 
   const toggleSuggestions = () => {
-    measureTitleInput();
     if (isSuggestionsVisible) {
       setIsSuggestionsVisible(false);
     } else {
+    measureTitleInput();
       setSuggestions(commonTaskTitles);
       setIsSuggestionsVisible(true);
     }
@@ -355,22 +363,23 @@ export default function CreateTaskScreen() {
               Task Title <Text className="text-red-500">*</Text>
             </Text>
             <View
-              ref={titleInputRef}
-              onLayout={measureTitleInput}
               className={`flex-row items-center bg-white rounded-xl border ${
                 errors.title ? "border-red-300" : "border-gray-200"
               }`}
             >
               <TextInput
                 value={formData.title}
+                ref={titleInputRef}
                 onChangeText={handleTitleChange}
-                onFocus={measureTitleInput}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
                 placeholder="Type or select a task title"
                 className="flex-1 px-4 py-3 text-base text-gray-800"
                 maxLength={100}
               />
               <TouchableOpacity onPress={toggleSuggestions} className="px-4">
-                <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                <Ionicons   name={isSuggestionsVisible ? "chevron-up" : "chevron-down"} 
+ size={20} color="#6B7280" />
               </TouchableOpacity>
             </View>
             {errors.title && (
@@ -406,12 +415,13 @@ export default function CreateTaskScreen() {
             <Text className="text-base font-semibold text-gray-700 mb-2">
               Priority
             </Text>
-            <View className="bg-white rounded-xl border border-gray-200">
+            <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={formData.priority}
                 onValueChange={(value) => updateField("priority", value)}
+                style={styles.picker}
               >
-                <Picker.Item label="Select Priority" value={null} />
+                <Picker.Item label="Select Priority" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined} />
                 <Picker.Item label="Low Priority" value={TaskPriority.LOW} />
                 <Picker.Item
                   label="Medium Priority"
@@ -504,15 +514,18 @@ export default function CreateTaskScreen() {
             <Text className="text-base font-semibold text-gray-700 mb-2">
               Assign To
             </Text>
-            <View className="bg-white rounded-xl border border-gray-200">
+            <View style={styles.pickerContainer}>
               <Picker
+                key={`users-${users.length}`} 
                 selectedValue={formData.assignedToId}
                 onValueChange={(value) => updateField("assignedToId", value)}
                 enabled={!usersLoading}
+                style={styles.picker}
               >
                 <Picker.Item
-                label="Select user"
+                label="Select staff"
                   value=""
+                  color={Platform.OS === "ios" ? "#9CA3AF" : undefined} 
                 />
                 {users.map((user) => (
                   <Picker.Item
@@ -543,13 +556,14 @@ export default function CreateTaskScreen() {
                 <Text className="text-base font-semibold text-gray-700 mb-2">
                   Patient
                 </Text>
-                <View className="bg-white rounded-xl border border-gray-200">
+                <View style={styles.pickerContainer}>
                   <Picker
+                    key={`patients-${patients.length}`}
                     selectedValue={formData.patientId}
                     onValueChange={(value) => updateField("patientId", value)}
-                    enabled={!patientsLoading}
+                     enabled={!patientsLoading}
                   >
-                    <Picker.Item label="Select patient (optional)" value="" />
+                    <Picker.Item label="Select patient" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined}  />
                     {patients.map((patient) => (
                       <Picker.Item
                         key={patient.id}
@@ -648,6 +662,34 @@ export default function CreateTaskScreen() {
 }
 
 const styles = StyleSheet.create({
+  // FIXED: Proper picker container styling
+  pickerContainer: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        paddingVertical: 0,
+      },
+      android: {
+        paddingVertical: 0,
+      },
+    }),
+  },
+  // FIXED: Proper picker styling
+  picker: {
+    ...Platform.select({
+      ios: {
+        height: 50,
+      },
+      android: {
+        height: 50,
+        color: "#1F2937",
+      },
+    }),
+  },
   suggestionsContainer: {
     position: "absolute",
     backgroundColor: "white",
@@ -672,4 +714,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1F2937",
   },
-});
+})
+

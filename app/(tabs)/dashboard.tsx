@@ -220,10 +220,10 @@ export default function DashboardScreen() {
               <Text className="text-white text-xs font-bold">3</Text>
             </View>
           </TouchableOpacity>
-          <Image
+          {/* <Image
             source={{ uri: "https://i.pravatar.cc/150?u=emilycarter" }}
             className="w-12 h-12 rounded-full"
-          />
+          /> */}
         </View>
       </View>
 

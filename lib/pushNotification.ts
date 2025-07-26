@@ -1,79 +1,59 @@
-//import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { router } from 'expo-router';
-import api from './api'; // Assuming you have a configured axios instance
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import Constants from "expo-constants";
 
-// This handler determines how the app behaves when a notification is received while the app is foregrounded.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true, // Show the notification alert
-    shouldPlaySound: true, // Play a sound
-    shouldSetBadge: false, // Don't change the app icon's badge number
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
-export async function registerForPushNotificationsAsync(authToken: string) {
+// This is the entry point for all push notification logic.
+// It should be called once when the app starts, probably after the user logs in.
+export async function registerForPushNotificationsAsync(): Promise<string | null> {
   let token;
 
-  // Push notifications only work on physical devices
+  // Push notifications only work on physical devices, so we need to check for that first.
   if (!Device.isDevice) {
-    console.warn('Push notifications are not available on simulators. Use a physical device.');
-    return;
+    alert("Must use physical device for Push Notifications");
+    return null;
   }
 
-  // Check existing permissions
+  // Check the current notification permissions.
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
-  // If permission has not been granted, ask the user
-  if (existingStatus !== 'granted') {
+  // If permissions have not been granted, we need to ask the user for permission.
+  if (existingStatus !== "granted") {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
-  // If the user ultimately denies permission, exit the function
-  if (finalStatus !== 'granted') {
-    console.log('User denied push notification permissions.');
-    return;
+  // If the user still did not grant permissions, we can't get a push token.
+  if (finalStatus !== "granted") {
+    alert("Failed to get push token for push notification!");
+    return null;
   }
 
-  // Get the Expo Push Token
+  // If we have permission, we can get the push token.
+  // We need to provide the project ID to identify our app with the Expo push notification service.
   try {
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_PROJECT_ID, // Ensure you have this in your .env
-    })).data;
-    console.log('Expo Push Token:', token);
-  } catch (error) {
-    console.error('Failed to get push token:', error);
-    return;
+    // Correctly access the projectId from expo-constants
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) {
+      throw new Error("Could not find project ID in app.json/app.config.js. Make sure you have configured your EAS project.");
+    }
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch (e: any) {
+    console.error("Error getting push token:", e.message);
+    return null;
   }
 
-  // --- Send the token to your backend ---
-  if (token) {
-    try {
-      await api.post('/users/push-token', 
-        { token },
-        { headers: { Authorization: `Bearer ${authToken}` } }
-      );
-      console.log('Push token successfully sent to backend.');
-    } catch (error) {
-      console.error('Failed to send push token to backend:', error);
-    }
+  // On Android, we need to set a notification channel.
+  // This is not required for iOS.
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
   }
-
-  // --- Handle user interaction with notifications ---
-  // This listener is fired whenever a user taps on or interacts with a notification (works when app is foregrounded, backgrounded, or killed)
-  Notifications.addNotificationResponseReceivedListener(response => {
-    console.log('Notification response received:', response);
-    // Here, you can navigate the user to a specific screen based on the notification data
-    const taskId = response.notification.request.content.data.taskId;
-    if (taskId) {
-      router.push(`/(tabs)/tasks/${taskId}`); // Example: navigate to a task detail screen
-    }
-  });
 
   return token;
 }

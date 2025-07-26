@@ -5,8 +5,6 @@ node_modules/
 .aiexclude
 /android
 /ios
-google-services.json
-.vscode
 # Expo
 .expo/
 dist/
@@ -36,7 +34,6 @@ yarn-error.*
 
 # local env files
 .env*.local
-
 
 
 # typescript
