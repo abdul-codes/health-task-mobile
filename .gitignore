@@ -3,6 +3,8 @@
 # dependencies
 node_modules/
 .aiexclude
+/android
+/ios
 # Expo
 .expo/
 dist/
@@ -38,3 +40,4 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+.vscode

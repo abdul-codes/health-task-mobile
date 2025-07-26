@@ -11,11 +11,17 @@ import { useAuth } from "../hooks/useAuth";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
 import "../global.css";
-import { mmkvStorage } from "@/lib/mmkvStorage";
+import { asyncStoragePersister } from "@/lib/asyncStorage";
+// import { mmkvStorage } from "@/lib/mmkvStorage";
 
-const mmkvAsyncPersister = createAsyncStoragePersister({
-  storage: mmkvStorage,
-});
+
+
+// const mmkvAsyncPersister = createAsyncStoragePersister({
+//   storage: mmkvStorage,
+// });
+const asyncStoragePerisiser = createAsyncStoragePersister({
+  storage: asyncStoragePersister
+})
 
 //Error Boundary Fallback                                           */
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -47,10 +53,10 @@ function useProtectedRoute(sessionState: SessionState) {
 
     if (sessionState === "authenticated" && !inTabsGroup) {
       // Redirect to the dashboard if the user is authenticated but not in the main app area.
-      router.replace("/(tabs)/dashboard");
+      router.replace("/dashboard");
     } else if (sessionState === "unauthenticated" && inTabsGroup) {
       // Redirect to the login screen if the user is not authenticated but somehow in the main app area.
-      router.replace("/");
+      router.replace("/login");
     }
 
   }, [sessionState, segments, router]);
@@ -65,9 +71,7 @@ export default function RootLayout() {
         console.error("Error Boundary caught an error:", error, errorInfo);
       }}
     >
-      <PersistQueryClientProvider client={queryClient} persistOptions={{persister: mmkvAsyncPersister}}>
         <RootLayoutNav />
-      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 }
@@ -179,15 +183,17 @@ function RootLayoutNav() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <NetworkStatusIndicator isOnline={isOnline ?? true} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
-      </Stack>
-    </SafeAreaProvider>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{persister: asyncStoragePerisiser}}>
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <NetworkStatusIndicator isOnline={isOnline ?? true} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </SafeAreaProvider>
+    </PersistQueryClientProvider>
   );
 }
 // Network Status Indicator

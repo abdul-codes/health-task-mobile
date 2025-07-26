@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
-import React, { useRef, useState } from "react";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -19,7 +19,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
-//import useAuth from "../../hooks/useAuth";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { TaskPriority, TaskStatus } from "@/lib/types";
@@ -49,9 +48,7 @@ const QuickDueButton: React.FC<{
   <TouchableOpacity
     onPress={onPress}
     className={`px-3 py-2 rounded-lg border ${
-      isActive
-        ? "bg-blue-500 border-blue-500"
-        : "bg-white border-gray-300"
+      isActive ? "bg-blue-500 border-blue-500" : "bg-white border-gray-300"
     }`}
   >
     <Text
@@ -64,16 +61,22 @@ const QuickDueButton: React.FC<{
 
 // Re-integrated Zod schema
 const createTaskSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters long").max(100, "Title cannot exceed 100 characters"),
+  title: z
+    .string()
+    .min(3, "Title must be at least 3 characters long")
+    .max(100, "Title cannot exceed 100 characters"),
   description: z
     .string()
     .min(10, "Description must be at least 10 characters long"),
   status: z.nativeEnum(TaskStatus),
   priority: z.nativeEnum(TaskPriority),
-  dueDate: z.string().datetime("Invalid due date").refine((val) => {
-    const date = new Date(val);
-    return !isNaN(date.getTime()) && date > new Date();
-  }, "Due date must be in the future"),
+  dueDate: z
+    .string()
+    .datetime("Invalid due date")
+    .refine((val) => {
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, "Due date must be in the future"),
   assignedToId: z.string().cuid("Invalid user ID format").optional(),
   patientId: z.string().cuid("Invalid patient ID format").optional(),
 });
@@ -95,6 +98,10 @@ export default function CreateTaskScreen() {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();
   const titleInputRef = useRef<View>(null);
+  const params = useLocalSearchParams<{
+    patientId?: string;
+    patientName?: string;
+  }>();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,7 +111,7 @@ export default function CreateTaskScreen() {
     priority: TaskPriority.MEDIUM,
     dueDate: new Date(),
     assignedToId: "",
-    patientId: "",
+    patientId: ""
   });
 
   // UI state
@@ -121,6 +128,27 @@ export default function CreateTaskScreen() {
     height: 0,
   });
 
+  const updateField = useCallback(
+    (field: string, value: any) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      setErrors((prevErrors) => {
+        if (prevErrors[field]) {
+          const newErrors = { ...prevErrors };
+          delete newErrors[field];
+          return newErrors;
+        }
+        return prevErrors;
+      });
+    },
+    [],
+  ); // Empt
+
+  useEffect(() => {
+    if (params.patientId) {
+      updateField("patientId", params.patientId);
+    }
+  }, [params.patientId, updateField]);
+
   // Mutation for creating a task
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
     mutationFn: (taskData: CreateTaskInput) =>
@@ -129,7 +157,16 @@ export default function CreateTaskScreen() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      router.replace("/tasks");
+      queryClient.invalidateQueries({
+        queryKey: ["patient", params.patientId],
+      });
+      // router.replace("/tasks");
+      //   // If we can go back, do it. Otherwise, go to the tasks list.
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/tasks");
+      }
       Alert.alert("Success", "Task created successfully!");
       resetForm();
     },
@@ -141,57 +178,49 @@ export default function CreateTaskScreen() {
       Alert.alert("Error", message);
     },
   });
-  
-  const resetForm = () => {
-     setFormData({
-       title: "",
-       description: "",
-       status: TaskStatus.PENDING,
-       priority: TaskPriority.MEDIUM,
-       dueDate: new Date(),
-       assignedToId: "",
-       patientId: "",
-     });
-     setDueDateOption("custom");
-     setErrors({});
-   };
 
-  const { 
-    data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ["usersForDropdown"], // Using a more specific key is good practice
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      status: TaskStatus.PENDING,
+      priority: TaskPriority.MEDIUM,
+      dueDate: new Date(),
+      assignedToId: "",
+      patientId: "",
+    });
+    setDueDateOption("custom");
+    setErrors({});
+  }; 
+
+  const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ["usersForDropdown"],
     queryFn: async () => {
       // Correctly handle the direct array response
       const { data } = await api.get<User[]>("/users/dropdown");
       return data || []; // Return the array directly, or an empty array as a fallback
     },
-    enabled: !!accessToken, // Your existing logic to enable the query
+    enabled: !!accessToken,
   });
 
   const { data: patients = [], isLoading: patientsLoading } = useQuery({
     queryKey: ["patients"],
     queryFn: async (): Promise<Patient[]> => {
-      const response = await api.get("/patients/dropdown")
+      const response = await api.get("/patients/dropdown");
       return response.data;
     },
     enabled: !!accessToken,
   });
 
   // Handlers
-  const updateField = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
-
   const handleTitleChange = (text: string) => {
     updateField("title", text);
     if (text.length > 0) {
       const filtered = commonTaskTitles.filter((task) =>
-        task.toLowerCase().includes(text.toLowerCase())
+        task.toLowerCase().includes(text.toLowerCase()),
       );
       setSuggestions(filtered);
-      
+
       if (filtered.length > 0) {
         if (!isSuggestionsVisible) {
           measureTitleInput();
@@ -249,7 +278,7 @@ export default function CreateTaskScreen() {
       newDateTime.setFullYear(
         selectedDate.getFullYear(),
         selectedDate.getMonth(),
-        selectedDate.getDate()
+        selectedDate.getDate(),
       );
       updateField("dueDate", newDateTime);
     }
@@ -259,10 +288,7 @@ export default function CreateTaskScreen() {
     setShowTimePicker(Platform.OS === "ios");
     if (selectedTime) {
       const newDateTime = new Date(formData.dueDate);
-      newDateTime.setHours(
-        selectedTime.getHours(),
-        selectedTime.getMinutes()
-      );
+      newDateTime.setHours(selectedTime.getHours(), selectedTime.getMinutes());
       updateField("dueDate", newDateTime);
     }
   };
@@ -348,9 +374,7 @@ export default function CreateTaskScreen() {
               </TouchableOpacity>
             </View>
             {errors.title && (
-              <Text className="text-red-500 text-sm mt-1">
-                {errors.title}
-              </Text>
+              <Text className="text-red-500 text-sm mt-1">{errors.title}</Text>
             )}
           </View>
 
@@ -387,6 +411,7 @@ export default function CreateTaskScreen() {
                 selectedValue={formData.priority}
                 onValueChange={(value) => updateField("priority", value)}
               >
+                <Picker.Item label="Select Priority" value={null} />
                 <Picker.Item label="Low Priority" value={TaskPriority.LOW} />
                 <Picker.Item
                   label="Medium Priority"
@@ -406,7 +431,7 @@ export default function CreateTaskScreen() {
             <Text className="text-base font-semibold text-gray-700 mb-2">
               Due Date <Text className="text-red-500">*</Text>
             </Text>
-            
+
             <View className="flex-row justify-between mb-4">
               <QuickDueButton
                 label="In 1 hour"
@@ -449,6 +474,7 @@ export default function CreateTaskScreen() {
                     {formData.dueDate.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
+                      hour12: true
                     })}
                   </Text>
                   <Ionicons name="time-outline" size={20} color="#6B7280" />
@@ -465,7 +491,7 @@ export default function CreateTaskScreen() {
                 })}
               </Text>
             </View>
-            
+
             {errors.dueDate && (
               <Text className="text-red-500 text-sm mt-1">
                 {errors.dueDate}
@@ -476,7 +502,7 @@ export default function CreateTaskScreen() {
           {/* Assign To Field */}
           <View className="mb-6">
             <Text className="text-base font-semibold text-gray-700 mb-2">
-              Assign To (Optional)
+              Assign To
             </Text>
             <View className="bg-white rounded-xl border border-gray-200">
               <Picker
@@ -485,15 +511,13 @@ export default function CreateTaskScreen() {
                 enabled={!usersLoading}
               >
                 <Picker.Item
-                  label={
-                    usersLoading ? "Loading..." : "Select user (optional)"
-                  }
+                label="Select user"
                   value=""
                 />
                 {users.map((user) => (
                   <Picker.Item
                     key={user.id}
-                    label={` ${user.role} ${user.firstName} ${user.lastName}`}
+                    label={`${user.firstName} ${user.lastName} (${user.role})`}
                     value={user.id}
                   />
                 ))}
@@ -503,32 +527,40 @@ export default function CreateTaskScreen() {
 
           {/* Patient Field */}
           <View className="mb-8">
-            <Text className="text-base font-semibold text-gray-700 mb-2">
-              Patient (Optional)
-            </Text>
-            <View className="bg-white rounded-xl border border-gray-200">
-              <Picker
-                selectedValue={formData.patientId}
-                onValueChange={(value) => updateField("patientId", value)}
-                enabled={!patientsLoading}
-              >
-                <Picker.Item
-                  label={
-                    patientsLoading
-                      ? "Loading..."
-                      : "Select patient (optional)"
-                  }
-                  value=""
-                />
-                {patients.map((patient) => (
-                  <Picker.Item
-                    key={patient.id}
-                    label={`${patient.name} - Room ${patient.roomNumber}`}
-                    value={patient.id}
-                  />
-                ))}
-              </Picker>
-            </View>
+            {params.patientName ? (
+              <View>
+                <Text className="text-base font-semibold text-gray-700 mb-2">
+                  Patient
+                </Text>
+                <View className="bg-gray-100 rounded-xl px-4 py-4">
+                  <Text className="text-base text-gray-800 font-semibold">
+                    {params.patientName}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Text className="text-base font-semibold text-gray-700 mb-2">
+                  Patient
+                </Text>
+                <View className="bg-white rounded-xl border border-gray-200">
+                  <Picker
+                    selectedValue={formData.patientId}
+                    onValueChange={(value) => updateField("patientId", value)}
+                    enabled={!patientsLoading}
+                  >
+                    <Picker.Item label="Select patient (optional)" value="" />
+                    {patients.map((patient) => (
+                      <Picker.Item
+                        key={patient.id}
+                        label={`${patient.name} - Room ${patient.roomNumber}`}
+                        value={patient.id}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Buttons */}

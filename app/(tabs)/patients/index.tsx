@@ -31,15 +31,13 @@ type Patient = {
 // Fetches the list of all patients from the backend
 const fetchPatients = async (): Promise<Patient[]> => {
   // Using the same hardcoded IP as in other files. This should be moved to an env variable.
- try{
+
    
   const { data } = await api.get("/patients");
   return data;
- } catch(error){
-   console.error("Failed to fetch patients:", error);
-   Alert.alert("Error", "Failed to fetch patients");
-   throw error;
- }
+  // console.error("Failed to fetch patients:", error);
+   // Alert.alert("'Network Error' Please try again");
+ 
 };
 
 // A card component to display individual patient information
@@ -106,8 +104,8 @@ export default function PatientsScreen() {
       return (
         <View className="flex-1 justify-center items-center p-8">
           <Ionicons name="cloud-offline-outline" size={60} color="#EF4444" />
-          <Text className="text-lg font-semibold text-red-600 mt-4 text-center">
-            Error fetching patients
+          <Text className="text-lg font-semibold text-red-500 mt-4 text-center">
+            Network Error fetching patients
           </Text>
           <Text className="text-gray-500 mt-1 text-center">
             {error.message}

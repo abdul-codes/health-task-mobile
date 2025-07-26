@@ -1,42 +1,31 @@
-// app/(tabs)/tasks/index.tsx
-// All Tasks Screen - Updated to use shared mock data
-// 
-// Changes made:
-// 1. Moved mock data to shared mockData.ts file for consistency
-// 2. Updated imports to use shared types and data
-// 3. Updated TaskListItem interface to use MockTask type
-// 4. Ensured smooth data flow between task list and detail screens
 
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Link, Stack } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
-
-// --- Import Shared Mock Data ---
-// Using shared mock data for consistency across task screens
-import { MockTask, mockTasks, Priority, Status } from '../../../lib/mockData';
-
-
-
-// --- Reusable Components ---
+import React, {  useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, Pressable, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import { Task, TaskPriority, TaskStatus } from '@/lib/types';
+import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 interface TaskListItemProps {
-  item: MockTask;
+  item: Task;
 }
 
 const TaskListItem = ({ item }: TaskListItemProps) => {
-    // Define styles for different priorities and statuses
-    const priorityStyles: Record<Priority, string> = {
-        Critical: "bg-red-100 text-red-700",
-        High: "bg-yellow-100 text-yellow-700",
-        Normal: "bg-blue-100 text-blue-700",
-        Low: "bg-gray-100 text-gray-700",
-    };
-    const statusStyles: Record<Status, string> = {
-        New: "bg-green-100 text-green-700",
-        'In Progress': "bg-purple-100 text-purple-700",
-        Completed: "bg-gray-200 text-gray-500",
-    };
+  const priorityStyles: Record<TaskPriority, string> = {
+    [TaskPriority.CRITICAL]: "bg-red-100 text-red-700",
+    [TaskPriority.HIGH]: "bg-yellow-100 text-yellow-700",
+    [TaskPriority.MEDIUM]: "bg-blue-100 text-blue-700",
+    [TaskPriority.LOW]: "bg-gray-100 text-gray-700",
+  };
+  const statusStyles: Record<TaskStatus, string> = {
+    [TaskStatus.PENDING]: "bg-green-100 text-green-700",
+    [TaskStatus.IN_PROGRESS]: "bg-purple-100 text-purple-700",
+    [TaskStatus.COMPLETED]: "bg-gray-200 text-gray-500",
+    [TaskStatus.CANCELLED]: "bg-red-200 text-red-500",
+  };
+
 
     const formattedDate = new Date(item.dueDate).toLocaleDateString('en-US', {
         month: '2-digit',
@@ -46,8 +35,13 @@ const TaskListItem = ({ item }: TaskListItemProps) => {
 
     return (
         <Link href={`/tasks/${item.id}`} asChild>
-            <TouchableOpacity className="bg-white p-4 rounded-xl mb-4 shadow-sm active:bg-gray-100">
+            <TouchableOpacity className="bg-white p-4 rounded-xl mb-3 shadow-sm active:bg-gray-100">
                 <Text className="text-lg font-semibold text-gray-800 mb-2">{item.title}</Text>
+                {item.patient && (
+                                 <Text className="text-base text-gray-500">
+                                     Patient: {item.patient.name} - Room: {item.patient.roomNumber}
+                                 </Text>
+                             )}
                 <View className="flex-row items-center mb-3">
                     <Feather name="calendar" size={14} color="#6B7280" />
                     <Text className="text-sm text-gray-500 ml-2">Due: {formattedDate}</Text>
@@ -69,17 +63,49 @@ const TaskListItem = ({ item }: TaskListItemProps) => {
 // --- Main Tasks List Screen ---
 
 export default function TasksScreen() {
+   const {accessToken} = useAuth()
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [activeFilter, setActiveFilter] = useState<Status | 'All'>('All');
+    const [activeFilter, setActiveFilter] = useState<TaskStatus | 'All'>('All');
 
-    const filteredTasks = useMemo(() => {
-        if (activeFilter === 'All') {
-            return mockTasks;
-        }
-        return mockTasks.filter(task => task.status === activeFilter);
-    }, [activeFilter]);
+    const {
+      data: tasks,
+      isLoading,
+      isError,
+      error,
+    } = useQuery<Task[], Error>({
+      queryKey: ["tasks", activeFilter],
+      queryFn: async () => {
+        const params = activeFilter === "All" ? {} : { status: activeFilter };
+        const { data } = await api.get("/tasks", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          params,
+        });
+        return data;
+      },
+      enabled: !!accessToken,
+    });
 
-    const filterOptions: (Status | 'All')[] = ['All', 'New', 'In Progress', 'Completed'];
+    const filterOptions: (TaskStatus | 'All')[] = ['All', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED];
+    if (isLoading) {
+      return (
+        <SafeAreaView
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" />
+          <Text>Loading tasks...</Text>
+        </SafeAreaView>
+      );
+    }
+  
+    if (isError) {
+      return (
+        <SafeAreaView
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text>Error fetching tasks: {error.message}</Text>
+        </SafeAreaView>
+      );
+    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
@@ -109,7 +135,7 @@ export default function TasksScreen() {
 
                 {/* --- Task List --- */}
                 <FlatList
-                    data={filteredTasks}
+                    data={tasks}
                     renderItem={({ item }) => <TaskListItem item={item} />}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ paddingBottom: 20 }}

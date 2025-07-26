@@ -54,6 +54,7 @@ const TaskListItemComponent = ({ item }: { item: Task }) => {
   const status = STATUS_STYLES[item.status];
 
   return (
+    <Link href={{ pathname: "/tasks/[id]", params:{id: item.id} }} asChild>
     <TouchableOpacity className="bg-white p-4 rounded-lg shadow-sm mb-3 border-l-4 border-blue-500">
       <View className="flex-row justify-between items-start">
         <Text className="text-base font-bold text-gray-800 flex-1 pr-2">{item.title}</Text>
@@ -68,10 +69,11 @@ const TaskListItemComponent = ({ item }: { item: Task }) => {
         </View>
         <Ionicons name="calendar-outline" size={14} color="#6B7280" />
         <Text className="text-sm text-gray-600 ml-1">
-          Due: {new Date(item.dueDate).toLocaleDateString()}
-        </Text>
+              Due: {new Date(item.dueDate).toLocaleString("en-US", { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+            </Text>
       </View>
     </TouchableOpacity>
+     </Link>
   );
 }
 

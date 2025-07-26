@@ -1,8 +1,3 @@
-// app/index.tsx
-// This is the main screen for your app, following Expo Router conventions.
-// Ensure you have nativewind, typescript, and @expo/vector-icons installed.
-// NOTE: We are now using standard components with `className` instead of the deprecated `styled` HOC.
-
 import React from "react";
 import {
   View,
@@ -11,74 +6,32 @@ import {
   SafeAreaView,
   TouchableOpacity,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Link, Href } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
-// --- Type Definitions ---
-// Defining types for our data structures and component props
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import {z} from "zod";
 
-type Priority = "Critical" | "High" | "Normal" | "Low";
-type Status = "New" | "In Progress" | "Completed";
 
-interface Task {
-  id: string;
-  title: string;
-  patient: {
-    name: string;
-    roomNumber: string;
-  };
-  priority: Priority;
-  status: Status;
-  dueDate: string;
-}
 
-// --- Mock Data ---
-// In a real app, this data would come from an API.
-const mockTasks: Task[] = [
-  {
-    id: "task101",
-    title: "Administer Medication",
-    patient: { name: "John Doe", roomNumber: "301A" },
-    priority: "Critical",
-    status: "New",
-    dueDate: "2025-06-16T10:00:00Z", // Note: Using a future date for demonstration
-  },
-  {
-    id: "task102",
-    title: "Check Vital Signs",
-    patient: { name: "Jane Smith", roomNumber: "302B" },
-    priority: "High",
-    status: "New",
-    dueDate: "2025-06-16T10:15:00Z",
-  },
-  {
-    id: "task103",
-    title: "Update Patient Chart",
-    patient: { name: "Robert Brown", roomNumber: "305A" },
-    priority: "Normal",
-    status: "In Progress",
-    dueDate: "2025-06-16T10:30:00Z",
-  },
-  {
-    id: "task104",
-    title: "Prepare for Discharge",
-    patient: { name: "Emily White", roomNumber: "303C" },
-    priority: "Normal",
-    status: "New",
-    dueDate: "2025-06-16T11:00:00Z",
-  },
-  {
-    id: "task105",
-    title: "Change IV Drip",
-    patient: { name: "Michael Johnson", roomNumber: "301A" },
-    priority: "Low",
-    status: "Completed",
-    dueDate: "2025-06-16T11:30:00Z",
-  },
-];
-
-// --- Reusable Components ---
+const taskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  status: z.nativeEnum(TaskStatus),
+  priority: z.nativeEnum(TaskPriority),
+  dueDate: z.string().datetime(),
+  patient: z
+    .object({
+      name: z.string(),
+      roomNumber: z.string().nullable(), // Allow roomNumber to be null
+    })
+});
+// const taskArraySchema = z.array(taskSchema);
 
 interface SummaryCardProps {
   title: string;
@@ -132,16 +85,22 @@ interface TaskCardProps {
 }
 
 const TaskCard = ({ task }: TaskCardProps) => {
-  const priorityStyles: Record<
-    Priority,
-    { bg: string; text: string; label: string }
-  > = {
-    Critical: { bg: "bg-red-100", text: "text-red-700", label: "Critical" },
-    High: { bg: "bg-yellow-100", text: "text-yellow-700", label: "High" },
-    Normal: { bg: "bg-blue-100", text: "text-blue-700", label: "Normal" },
-    Low: { bg: "bg-gray-200", text: "text-gray-700", label: "Low" },
-  };
+    const priorityStyles: Record<TaskPriority, { bg: string; text: string; label: string }> = {
+        [TaskPriority.CRITICAL]: { bg: "bg-red-100", text: "text-red-700", label: "Critical" },
+        [TaskPriority.HIGH]: { bg: "bg-yellow-100", text: "text-yellow-700", label: "High" },
+        [TaskPriority.MEDIUM]: { bg: "bg-blue-100", text: "text-blue-700", label: "Normal" },
+        [TaskPriority.LOW]: { bg: "bg-gray-200", text: "text-gray-700", label: "Low" },
+    };
   const currentPriority = priorityStyles[task.priority];
+  
+  // Styles for the status badge
+  const statusStyles: Record<TaskStatus, { bg: string; text: string; label: string }> = {
+      [TaskStatus.PENDING]: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending" },
+      [TaskStatus.IN_PROGRESS]: { bg: "bg-indigo-100", text: "text-indigo-800", label: "In Progress" },
+      [TaskStatus.COMPLETED]: { bg: "bg-green-100", text: "text-green-800", label: "Completed" },
+      [TaskStatus.CANCELLED]: { bg: "bg-red-100", text: "text-red-800", label: "Cancelled" },
+  }
+  const currentStatus = statusStyles[task.status]
 
   const formattedTime = new Date(task.dueDate).toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -157,9 +116,11 @@ const TaskCard = ({ task }: TaskCardProps) => {
             <Text className="text-lg font-semibold text-gray-800">
               {task.title}
             </Text>
+            {task.patient &&
             <Text className="text-sm text-gray-500 mt-1">
               Patient: {task.patient.name} - Room: {task.patient.roomNumber}
             </Text>
+            }
           </View>
           <Text className="text-base font-semibold text-gray-700 ml-2">
             {formattedTime}
@@ -171,6 +132,11 @@ const TaskCard = ({ task }: TaskCardProps) => {
               {currentPriority.label}
             </Text>
           </View>
+          <View className={`px-3 py-1 rounded-full ${currentStatus.bg}`}>
+                   <Text className={`text-xs font-bold uppercase ${currentStatus.text}`}>
+                     {currentStatus.label}
+                   </Text>
+                 </View>
         </View>
       </TouchableOpacity>
     </Link>
@@ -179,21 +145,59 @@ const TaskCard = ({ task }: TaskCardProps) => {
 
 // --- Main Dashboard Screen ---
 export default function DashboardScreen() {
-  const newTasksCount = mockTasks.filter((t) => t.status === "New").length;
-  const allTasksCount = mockTasks.filter(
-    (t) => t.status !== "Completed",
-  ).length;
-  const criticalTasksCount = mockTasks.filter(
-    (t) => t.priority === "Critical" && t.status !== "Completed",
-  ).length;
+    const { user, accessToken } = useAuth();
+    const {
+        data: tasks,
+        isLoading,
+        isError,
+        error,
+      } = useQuery<Task[], Error>({
+        queryKey: ["tasks", "dashboard"], // Use a specific key for the dashboard
+        queryFn: async () => {
+          // Fetch all tasks, filtering can be done on the client for the dashboard
+          const { data } = await api.get("/tasks", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          return data;
+        },
+        enabled: !!accessToken,
+      });
 
-  const { user } = useAuth();
 
-  const dueSoonTasks = mockTasks
-    .filter((task) => task.status !== "Completed")
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <ActivityIndicator size="large" />
+        <Text>Loading dashboard...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <Text>Error fetching tasks: {error.message}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Calculations based on fetched data
+  const newTasksCount = tasks?.filter((t) => t.status === TaskStatus.PENDING).length || 0;
+  const allTasksCount = tasks?.filter((t) => t.status !== TaskStatus.COMPLETED).length || 0;
+  const criticalTasksCount = tasks?.filter(
+    (t) => t.priority === TaskPriority.CRITICAL && t.status !== TaskStatus.COMPLETED
+  ).length || 0;
+  
+  const dueSoonTasks = tasks
+    ?.filter((task) => task.status !== TaskStatus.COMPLETED)
     .sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-    );
+    ) || [];
+
 
   // This component renders the main content of the list.
   const ListHeaderComponent = () => (
@@ -205,7 +209,7 @@ export default function DashboardScreen() {
             Good Morning,
           </Text>
           <Text className="text-2xl font-bold text-blue-600">
-            {user?.role} {user?.firstName} {user?.lastName}
+            {user?.role} {user?.firstName.toLowerCase()} {user?.lastName.toLowerCase()}
           </Text>
         </View>
         <View className="flex-row items-center">
