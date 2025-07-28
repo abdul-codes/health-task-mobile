@@ -1,11 +1,9 @@
 //import api from '@/lib/api';
-import api from '@/lib/api';
 import { secureStorage } from '@/lib/itemStore';
 import { queryClient } from '@/lib/queryClient';
 import { User } from '@/lib/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { registerForPushNotificationsAsync, usePushNotifications } from './useNotification';
 
 export interface AuthState {
   user: User | null;
