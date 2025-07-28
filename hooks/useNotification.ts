@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { useAuth } from "./useAuth";
 
+
 // FIX: Correctly implement the NotificationBehavior type
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,16 +18,7 @@ Notifications.setNotificationHandler({
     shouldShowList: false
   }),
 });
-
-export function usePushNotifications() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
-
-  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
-  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
-
-  async function registerForPushNotificationsAsync() {
+  export async function registerForPushNotificationsAsync() {
     let token;
 
     if (Platform.OS === "android") {
@@ -66,6 +58,14 @@ export function usePushNotifications() {
 
     return token;
   }
+
+export function usePushNotifications() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
+
+  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
 
   useEffect(() => {
     if (user) {
