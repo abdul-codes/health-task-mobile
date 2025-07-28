@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "movieapp",
-    "slug": "movieapp",
+    "name": "medicTask",
+    "slug": "medictask",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "movieapp",
+    "scheme": "medictask",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.movieapp"
+      "bundleIdentifier": "com.anonymous.medicTask"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,8 +18,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.movieapp",
-      "googleServiceFile": "./google-services.json"
+      "package": "com.anonymous.medicTask"
     },
     "web": {
       "bundler": "metro",
@@ -46,7 +45,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "5c75a871-1bf0-4444-ab39-68745a496f3f"
+        "projectId": "80b0bd59-0b22-4460-bcf4-266f4fafbe35"
       }
     },
     "owner": "abduldev"

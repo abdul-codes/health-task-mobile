@@ -22,7 +22,7 @@ npm install @expo/vector-icons
 Run these commands in your project root:
 
 ```bash
-cd /home/abdul/Documents/Projects/mobile/firstmobile/movieapp
+cd /home/abdul/Documents/Projects/mobile/firstmobile/medicTask
 npm install @react-native-picker/picker @react-native-community/datetimepicker
 ```
 

@@ -12,6 +12,7 @@ import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
 import "../global.css";
 import { asyncStoragePersister } from "@/lib/asyncStorage";
+import { usePushNotifications } from "@/hooks/useNotification";
 // import { mmkvStorage } from "@/lib/mmkvStorage";
 
 
@@ -84,6 +85,8 @@ function RootLayoutNav() {
   const { isAuthenticated, user } = useAuth();
   const [sessionState, setSessionState] = useState<SessionState>("loading");
   const [hasInitialized, setHasInitialized] = useState(false);
+  
+  
 
   // Validate session on app start and resume
   const validateSession = useCallback(async () => {
@@ -152,6 +155,9 @@ function RootLayoutNav() {
     return () => subscription?.remove();
   }, [hasInitialized, validateSession]);
   
+  usePushNotifications()
+  
+
   useProtectedRoute(sessionState);
 
   // Handle network status changes
@@ -181,6 +187,7 @@ function RootLayoutNav() {
       </View>
     );
   }
+   
 
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{persister: asyncStoragePerisiser}}>
