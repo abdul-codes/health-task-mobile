@@ -95,7 +95,7 @@ const commonTaskTitles = [
 ];
 
 export default function CreateTaskScreen() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
     patientId?: string;
@@ -160,6 +160,14 @@ export default function CreateTaskScreen() {
       queryClient.invalidateQueries({
         queryKey: ["patient", params.patientId],
       });
+      queryClient.invalidateQueries({ queryKey: ["tasks", "dashboard" , user?.id]});
+      // Also invalidate the specific patient query if a task was assigned to them
+        if (params.patientId) {
+          queryClient.invalidateQueries({
+            queryKey: ["patient", params.patientId],
+          });
+        }
+
       // router.replace("/tasks");
       //   // If we can go back, do it. Otherwise, go to the tasks list.
       if (router.canGoBack()) {
@@ -194,22 +202,22 @@ export default function CreateTaskScreen() {
   }; 
 
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ["usersForDropdown"],
+    queryKey: ["usersForDropdown", user?.id],
     queryFn: async () => {
       // Correctly handle the direct array response
       const { data } = await api.get<User[]>("/users/dropdown");
       return data || []; // Return the array directly, or an empty array as a fallback
     },
-    enabled: !!accessToken,
+    enabled: !!accessToken && !!user?.id,
   });
 
   const { data: patients = [], isLoading: patientsLoading } = useQuery({
-    queryKey: ["patients"],
+    queryKey: ["patients", user?.id],
     queryFn: async (): Promise<Patient[]> => {
       const response = await api.get("/patients/dropdown");
       return response.data;
     },
-    enabled: !!accessToken,
+    enabled: !!accessToken && !!user?.id,
   });
 
   // Handlers

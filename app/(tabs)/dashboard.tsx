@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -14,9 +14,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { Task, TaskPriority, TaskStatus } from "@/lib/types";
-import {z} from "zod";
-
-
+import { z } from "zod";
 
 const taskSchema = z.object({
   id: z.string(),
@@ -25,11 +23,10 @@ const taskSchema = z.object({
   status: z.nativeEnum(TaskStatus),
   priority: z.nativeEnum(TaskPriority),
   dueDate: z.string().datetime(),
-  patient: z
-    .object({
-      name: z.string(),
-      roomNumber: z.string().nullable(), // Allow roomNumber to be null
-    })
+  patient: z.object({
+    name: z.string(),
+    roomNumber: z.string().nullable(), // Allow roomNumber to be null
+  }),
 });
 // const taskArraySchema = z.array(taskSchema);
 
@@ -85,29 +82,88 @@ interface TaskCardProps {
 }
 
 const TaskCard = ({ task }: TaskCardProps) => {
-    const priorityStyles: Record<TaskPriority, { bg: string; text: string; label: string }> = {
-        [TaskPriority.CRITICAL]: { bg: "bg-red-100", text: "text-red-700", label: "Critical" },
-        [TaskPriority.HIGH]: { bg: "bg-yellow-100", text: "text-yellow-700", label: "High" },
-        [TaskPriority.MEDIUM]: { bg: "bg-blue-100", text: "text-blue-700", label: "Normal" },
-        [TaskPriority.LOW]: { bg: "bg-gray-200", text: "text-gray-700", label: "Low" },
-    };
+  const priorityStyles: Record<
+    TaskPriority,
+    { bg: string; text: string; label: string }
+  > = {
+    [TaskPriority.CRITICAL]: {
+      bg: "bg-red-100",
+      text: "text-red-700",
+      label: "Critical",
+    },
+    [TaskPriority.HIGH]: {
+      bg: "bg-yellow-100",
+      text: "text-yellow-700",
+      label: "High",
+    },
+    [TaskPriority.MEDIUM]: {
+      bg: "bg-blue-100",
+      text: "text-blue-700",
+      label: "Normal",
+    },
+    [TaskPriority.LOW]: {
+      bg: "bg-gray-200",
+      text: "text-gray-700",
+      label: "Low",
+    },
+  };
   const currentPriority = priorityStyles[task.priority];
-  
+
   // Styles for the status badge
-  const statusStyles: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-      [TaskStatus.PENDING]: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending" },
-      [TaskStatus.IN_PROGRESS]: { bg: "bg-indigo-100", text: "text-indigo-800", label: "In Progress" },
-      [TaskStatus.COMPLETED]: { bg: "bg-green-100", text: "text-green-800", label: "Completed" },
-      [TaskStatus.CANCELLED]: { bg: "bg-red-100", text: "text-red-800", label: "Cancelled" },
-  }
-  const currentStatus = statusStyles[task.status]
+  const statusStyles: Record<
+    TaskStatus,
+    { bg: string; text: string; label: string }
+  > = {
+    [TaskStatus.PENDING]: {
+      bg: "bg-yellow-100",
+      text: "text-yellow-800",
+      label: "Pending",
+    },
+    [TaskStatus.IN_PROGRESS]: {
+      bg: "bg-indigo-100",
+      text: "text-indigo-800",
+      label: "In Progress",
+    },
+    [TaskStatus.COMPLETED]: {
+      bg: "bg-green-100",
+      text: "text-green-800",
+      label: "Completed",
+    },
+    [TaskStatus.CANCELLED]: {
+      bg: "bg-red-100",
+      text: "text-red-800",
+      label: "Cancelled",
+    },
+  };
+  const currentStatus = statusStyles[task.status];
 
-  const formattedTime = new Date(task.dueDate).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const formattedDueDate = useMemo(() => {
+    const dueDate = new Date(task.dueDate);
+    const now = new Date();
 
+    const isToday =
+      dueDate.getDate() === now.getDate() &&
+      dueDate.getMonth() === now.getMonth() &&
+      dueDate.getFullYear() === now.getFullYear();
+
+    if (isToday) {
+      // If the task is due today, just show the time.
+      return dueDate.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } else {
+      // If it's due on a future date, show a compact date and time.
+      return dueDate.toLocaleString("en-US", {
+        month: "short", // e.g., "Aug"
+        day: "numeric", // e.g., "16"
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+  }, [task.dueDate]);
   return (
     <Link href={{ pathname: `/tasks/[id]`, params: { id: task.id } }} asChild>
       <TouchableOpacity className="bg-white p-4 rounded-xl mb-4 shadow-sm active:bg-gray-100">
@@ -116,14 +172,14 @@ const TaskCard = ({ task }: TaskCardProps) => {
             <Text className="text-lg font-semibold text-gray-800">
               {task.title}
             </Text>
-            {task.patient &&
-            <Text className="text-sm text-gray-500 mt-1">
-              Patient: {task.patient.name} - Room: {task.patient.roomNumber}
-            </Text>
-            }
+            {task.patient && (
+              <Text className="text-sm text-gray-500 mt-1">
+                Patient: {task.patient.name} - Room: {task.patient.roomNumber}
+              </Text>
+            )}
           </View>
           <Text className="text-base font-semibold text-gray-700 ml-2">
-            {formattedTime}
+            {formattedDueDate}
           </Text>
         </View>
         <View className="flex-row justify-start items-center mt-3">
@@ -133,10 +189,12 @@ const TaskCard = ({ task }: TaskCardProps) => {
             </Text>
           </View>
           <View className={`px-3 py-1 rounded-full ${currentStatus.bg}`}>
-                   <Text className={`text-xs font-bold uppercase ${currentStatus.text}`}>
-                     {currentStatus.label}
-                   </Text>
-                 </View>
+            <Text
+              className={`text-xs font-bold uppercase ${currentStatus.text}`}
+            >
+              {currentStatus.label}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     </Link>
@@ -145,24 +203,23 @@ const TaskCard = ({ task }: TaskCardProps) => {
 
 // --- Main Dashboard Screen ---
 export default function DashboardScreen() {
-    const { user, accessToken } = useAuth();
-    const {
-        data: tasks,
-        isLoading,
-        isError,
-        error,
-      } = useQuery<Task[], Error>({
-        queryKey: ["tasks", "dashboard"], // Use a specific key for the dashboard
-        queryFn: async () => {
-          // Fetch all tasks, filtering can be done on the client for the dashboard
-          const { data } = await api.get("/tasks", {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          return data;
-        },
-        enabled: !!accessToken,
+  const { user, accessToken } = useAuth();
+  const {
+    data: tasks,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<Task[], Error>({
+    queryKey: ["tasks", "dashboard", user?.id], // Use a specific key for the dashboard
+    queryFn: async () => {
+      // Fetch all tasks, filtering can be done on the client for the dashboard
+      const { data } = await api.get("/tasks", {
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
-
+      return data;
+    },
+    enabled: !!accessToken && !!user?.id,
+  });
 
   if (isLoading) {
     return (
@@ -186,18 +243,23 @@ export default function DashboardScreen() {
   }
 
   // Calculations based on fetched data
-  const newTasksCount = tasks?.filter((t) => t.status === TaskStatus.PENDING).length || 0;
-  const allTasksCount = tasks?.filter((t) => t.status !== TaskStatus.COMPLETED).length || 0;
-  const criticalTasksCount = tasks?.filter(
-    (t) => t.priority === TaskPriority.CRITICAL && t.status !== TaskStatus.COMPLETED
-  ).length || 0;
-  
-  const dueSoonTasks = tasks
-    ?.filter((task) => task.status !== TaskStatus.COMPLETED)
-    .sort(
-      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-    ) || [];
+  const newTasksCount =
+    tasks?.filter((t) => t.status === TaskStatus.PENDING).length || 0;
+  const allTasksCount =
+    tasks?.filter((t) => t.status !== TaskStatus.COMPLETED).length || 0;
+  const criticalTasksCount =
+    tasks?.filter(
+      (t) =>
+        t.priority === TaskPriority.CRITICAL &&
+        t.status !== TaskStatus.COMPLETED,
+    ).length || 0;
 
+  const dueSoonTasks =
+    tasks
+      ?.filter((task) => task.status !== TaskStatus.COMPLETED)
+      .sort(
+        (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+      ) || [];
 
   // This component renders the main content of the list.
   const ListHeaderComponent = () => (
@@ -209,7 +271,8 @@ export default function DashboardScreen() {
             Good Morning,
           </Text>
           <Text className="text-2xl font-bold text-blue-600">
-            {user?.role} {user?.firstName.toLowerCase()} {user?.lastName.toLowerCase()}
+            {user?.role} {user?.firstName.toLowerCase()}{" "}
+            {user?.lastName.toLowerCase()}
           </Text>
         </View>
         <View className="flex-row items-center">

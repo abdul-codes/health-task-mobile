@@ -17,6 +17,7 @@ import DateTimePicker, { type DateTimePickerEvent } from "@react-native-communit
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import api from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 const patientSchema = z.object({
   name: z.string().min(2, { message: "Patient name must be at least 2 characters." }),
@@ -156,6 +157,7 @@ const StaffAssignment = ({
 export default function CreatePatientScreen() {
   const router = useRouter(); 
   const queryClient = useQueryClient(); 
+  const {user} = useAuth()
   
   const [name, setName] = useState("");
   const [dob, setDob] = useState<Date | undefined>(undefined);
@@ -169,8 +171,9 @@ export default function CreatePatientScreen() {
     isLoading: isLoadingUsers, 
     isError: isUsersError 
   } = useQuery<User[], Error>({
-    queryKey: ["assignableUsers"],
+    queryKey: ["assignableUsers", user?.id],
     queryFn: fetchAssignableUsers,
+    enabled: !!user?.id
   });
   
   const resetForm = () => {
@@ -186,7 +189,7 @@ export default function CreatePatientScreen() {
     mutationFn: (data: PatientFormData) => api.post("/patients", data),
     onSuccess: () => {
       // Invalidate patient queries
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['patients', user?.id] });
       
       Alert.alert("Success", "Patient created successfully", [
         { 

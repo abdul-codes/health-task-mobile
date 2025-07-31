@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/hooks/useAuth";
 
 // NOTE: This type is based on the `getAllPatients` controller response.
 // It currently fetches all patients from the database. To show patients
@@ -70,6 +71,7 @@ const PatientCard = ({ item }: { item: Patient }) => (
 );
 
 export default function PatientsScreen() {
+  const {user} = useAuth()
   const {
     data: patients,
     isLoading,
@@ -77,18 +79,19 @@ export default function PatientsScreen() {
     error,
     refetch,
   } = useQuery<Patient[], Error>({
-    queryKey: ["patients"],
+    queryKey: ["patients", user?.id],
     queryFn: fetchPatients,
+    enabled: !!user?.id
   });
 
   // useFocusEffect is a hook from expo-router that refetches data
   // every time the screen comes into focus. This ensures the list is
   // up-to-date after creating a new patient and navigating back.
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch]),
-  );
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     refetch();
+  //   }, [refetch]),
+  // );
 
   const renderContent = () => {
     if (isLoading) {

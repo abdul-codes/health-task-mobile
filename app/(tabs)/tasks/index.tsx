@@ -106,7 +106,7 @@ const fetchTasks = async (
 };
 
 export default function TasksScreen() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState<TaskStatus | "All">("All");
 
@@ -117,10 +117,10 @@ export default function TasksScreen() {
     error,
     refetch, // 1. Get the refetch function
   } = useQuery<Task[], Error>({
-    queryKey: ["tasks", activeFilter],
+    queryKey: ["tasks", user?.id, activeFilter],
     // 2. Use the new standalone fetch function
     queryFn: () => fetchTasks(accessToken, activeFilter),
-    enabled: !!accessToken,
+    enabled: !!accessToken && !!user?.id,
   });
 
   const filterOptions: (TaskStatus | "All")[] = [

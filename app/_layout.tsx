@@ -183,7 +183,7 @@ function RootLayoutNav() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        {/* <Text style={styles.loadingText}>Loading...</Text> */}
       </View>
     );
   }
