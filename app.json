@@ -3,7 +3,7 @@
     "name": "medicTask",
     "slug": "medictask",
     "jsEngine": "hermes",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/medic-icon.png",
     "scheme": "medictask",
@@ -16,7 +16,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/medic-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1F87E0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.aipowered.medicTask",
@@ -36,7 +36,7 @@
           "image": "./assets/images/medic-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#1F87E0"
         }
       ],
       "expo-web-browser",

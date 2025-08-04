@@ -63,11 +63,11 @@ const QuickDueButton: React.FC<{
 const createTaskSchema = z.object({
   title: z
     .string()
-    .min(3, "Title must be at least 3 characters long")
+    .min(3, "Task title must be at least 3 characters long")
     .max(100, "Title cannot exceed 100 characters"),
   description: z
     .string()
-    .min(10, "Description must be at least 10 characters long"),
+    .min(10, "Please write a detailed description of at least 10 characters long"),
   status: z.nativeEnum(TaskStatus),
   priority: z.nativeEnum(TaskPriority),
   dueDate: z
@@ -110,7 +110,7 @@ export default function CreateTaskScreen() {
     priority: TaskPriority.MEDIUM,
     dueDate: new Date(),
     assignedToId: "",
-    patientId:""
+    patientId: ""
   });
 
   // UI state
@@ -569,7 +569,9 @@ export default function CreateTaskScreen() {
                     key={`patients-${patients.length}`}
                     selectedValue={formData.patientId}
                     onValueChange={(value) => updateField("patientId", value)}
-                     enabled={!patientsLoading}
+                   enabled={!patientsLoading}
+                   style={{width: 200}}
+                   itemStyle={{fontSize: 16}}
                   >
                     <Picker.Item label="Select patient" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined}  />
                     {patients.map((patient) => (

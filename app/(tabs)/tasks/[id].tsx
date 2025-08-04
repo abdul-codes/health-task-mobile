@@ -31,6 +31,7 @@ const taskSchema = z.object({
       name: z.string(),
       roomNumber: z.string(),
     })
+    .nullable()
     .optional(),
 });
 
@@ -76,7 +77,7 @@ export function useUpdateStatus(taskId: string) {
   });
 }
 
-// --- Corrected "Version B" of ActionBar ---
+//
 function ActionBar({ task }: { task: Task }) {
   const { mutate, isPending, variables } = useUpdateStatus(task.id);
 

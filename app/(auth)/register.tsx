@@ -251,15 +251,15 @@ export default function RegisterScreen() {
                     <Text className="text-green-600 font-semibold">Sign In</Text>
                   </TouchableOpacity>
                 </View>
-                {/* Task Link */}
-                <View className="flex-row justify-center items-center mt-6">
+                {/* Test Task Link */}
+                {/*<View className="flex-row justify-center items-center mt-6">
                   <Text className="text-gray-600">Checking Tasks</Text>
                   <TouchableOpacity
                     onPress={() => router.push('/dashboard')}
                   >
                     <Text className="text-green-600 font-semibold">Check</Text>
                   </TouchableOpacity>
-                </View>
+                </View>*/}
               </View>
             </View>
           </View>

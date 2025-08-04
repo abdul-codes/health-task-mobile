@@ -47,7 +47,7 @@ export interface Task {
   createdAt: string;
   createdBy: User;
   assignedTo?: User;
-  patient?: Patient; // Fixed: Should be patient, not patientId
+  patient?: Patient | null; // Fixed: Should be patient, not patientId
 }
 
 // Patient interface
