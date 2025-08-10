@@ -66,14 +66,16 @@ function useProtectedRoute(sessionState: SessionState) {
 //Root Layout                                                        */
 export default function RootLayout() {
   return (
+    <PersistQueryClientProvider client={queryClient} persistOptions={{persister: asyncStoragePerisiser}}> 
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
       onError={(error, errorInfo) => {
         console.error("Error Boundary caught an error:", error, errorInfo);
       }}
-    >
+      >
         <RootLayoutNav />
     </ErrorBoundary>
+      </PersistQueryClientProvider>
   );
 }
 
@@ -190,7 +192,6 @@ function RootLayoutNav() {
    
 
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{persister: asyncStoragePerisiser}}>
       <SafeAreaProvider>
         <StatusBar style="auto" />
         <NetworkStatusIndicator isOnline={isOnline ?? true} />
@@ -200,7 +201,6 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </SafeAreaProvider>
-    </PersistQueryClientProvider>
   );
 }
 // Network Status Indicator
