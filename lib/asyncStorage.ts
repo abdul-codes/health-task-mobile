@@ -1,10 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StateStorage } from 'zustand/middleware';
 
-/**
- * An adapter for TanStack Query's persister.
- * It uses a simple promise-based interface that matches the persister's requirements.
- */
+
 export const asyncStoragePersister = {
   getItem: (name: string): Promise<string | null> => {
     return AsyncStorage.getItem(name);
@@ -17,10 +14,7 @@ export const asyncStoragePersister = {
   },
 };
 
-/**
- * An adapter specifically for Zustand's persist middleware.
- * It explicitly uses async/await and is typed with `StateStorage` for full compatibility.
- */
+
 export const zustandStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     try {

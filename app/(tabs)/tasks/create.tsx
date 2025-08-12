@@ -67,7 +67,10 @@ const createTaskSchema = z.object({
     .max(100, "Title cannot exceed 100 characters"),
   description: z
     .string()
-    .min(10, "Please write a detailed description of at least 10 characters long"),
+    .min(
+      10,
+      "Please write a detailed description of at least 10 characters long",
+    ),
   status: z.nativeEnum(TaskStatus),
   priority: z.nativeEnum(TaskPriority),
   dueDate: z
@@ -110,7 +113,7 @@ export default function CreateTaskScreen() {
     priority: TaskPriority.MEDIUM,
     dueDate: new Date(),
     assignedToId: "",
-    patientId: ""
+    patientId: "",
   });
 
   // UI state
@@ -119,7 +122,7 @@ export default function CreateTaskScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);  
+  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
   const titleInputRef = useRef<TextInput>(null);
   const [titleInputPosition, setTitleInputPosition] = useState({
     pageX: 0,
@@ -128,20 +131,17 @@ export default function CreateTaskScreen() {
     height: 0,
   });
 
-  const updateField = useCallback(
-    (field: string, value: any) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      setErrors((prevErrors) => {
-        if (prevErrors[field]) {
-          const newErrors = { ...prevErrors };
-          delete newErrors[field];
-          return newErrors;
-        }
-        return prevErrors;
-      });
-    },
-    [],
-  ); // Empt
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prevErrors) => {
+      if (prevErrors[field]) {
+        const newErrors = { ...prevErrors };
+        delete newErrors[field];
+        return newErrors;
+      }
+      return prevErrors;
+    });
+  }, []); // Empt
 
   useEffect(() => {
     if (params.patientId) {
@@ -152,21 +152,21 @@ export default function CreateTaskScreen() {
   // Mutation for creating a task
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
     mutationFn: (taskData: CreateTaskInput) =>
-      api.post("/tasks", taskData, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }),
+      api.post("/tasks", taskData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({
         queryKey: ["patient", params.patientId],
       });
-      queryClient.invalidateQueries({ queryKey: ["tasks", "dashboard" , user?.id]});
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "dashboard", user?.id],
+      });
       // Also invalidate the specific patient query if a task was assigned to them
-        if (params.patientId) {
-          queryClient.invalidateQueries({
-            queryKey: ["patient", params.patientId],
-          });
-        }
+      if (params.patientId) {
+        queryClient.invalidateQueries({
+          queryKey: ["patient", params.patientId],
+        });
+      }
 
       // router.replace("/tasks");
       //   // If we can go back, do it. Otherwise, go to the tasks list.
@@ -199,7 +199,7 @@ export default function CreateTaskScreen() {
     });
     setDueDateOption("custom");
     setErrors({});
-  }; 
+  };
 
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["usersForDropdown", user?.id],
@@ -229,7 +229,9 @@ export default function CreateTaskScreen() {
       );
       setSuggestions(filtered);
 
-      setIsSuggestionsVisible(filtered.length > 0 && filtered.length < commonTaskTitles.length);
+      setIsSuggestionsVisible(
+        filtered.length > 0 && filtered.length < commonTaskTitles.length,
+      );
     } else {
       setSuggestions([]);
       setIsSuggestionsVisible(false);
@@ -239,7 +241,7 @@ export default function CreateTaskScreen() {
   const handleSuggestionSelect = (title: string) => {
     updateField("title", title);
     setIsSuggestionsVisible(false);
-     titleInputRef.current?.blur(); // Blur the input to signify completion
+    titleInputRef.current?.blur(); // Blur the input to signify completion
   };
 
   const measureTitleInput = () => {
@@ -247,8 +249,7 @@ export default function CreateTaskScreen() {
       setTitleInputPosition({ pageX, pageY, width, height });
     });
   };
-  
-  
+
   const handleFocus = () => {
     measureTitleInput();
     // Show suggestions on focus if there's already text
@@ -266,7 +267,7 @@ export default function CreateTaskScreen() {
     if (isSuggestionsVisible) {
       setIsSuggestionsVisible(false);
     } else {
-    measureTitleInput();
+      measureTitleInput();
       setSuggestions(commonTaskTitles);
       setIsSuggestionsVisible(true);
     }
@@ -386,8 +387,11 @@ export default function CreateTaskScreen() {
                 maxLength={100}
               />
               <TouchableOpacity onPress={toggleSuggestions} className="px-4">
-                <Ionicons   name={isSuggestionsVisible ? "chevron-up" : "chevron-down"} 
- size={20} color="#6B7280" />
+                <Ionicons
+                  name={isSuggestionsVisible ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#6B7280"
+                />
               </TouchableOpacity>
             </View>
             {errors.title && (
@@ -429,7 +433,11 @@ export default function CreateTaskScreen() {
                 onValueChange={(value) => updateField("priority", value)}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Priority" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined} />
+                <Picker.Item
+                  label="Select Priority"
+                  value=""
+                  color={Platform.OS === "ios" ? "#9CA3AF" : undefined}
+                />
                 <Picker.Item label="Low Priority" value={TaskPriority.LOW} />
                 <Picker.Item
                   label="Medium Priority"
@@ -492,7 +500,7 @@ export default function CreateTaskScreen() {
                     {formData.dueDate.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
-                      hour12: true
+                      hour12: true,
                     })}
                   </Text>
                   <Ionicons name="time-outline" size={20} color="#6B7280" />
@@ -524,16 +532,16 @@ export default function CreateTaskScreen() {
             </Text>
             <View style={styles.pickerContainer}>
               <Picker
-                key={`users-${users.length}`} 
+                key={`users-${users.length}`}
                 selectedValue={formData.assignedToId}
                 onValueChange={(value) => updateField("assignedToId", value)}
                 enabled={!usersLoading}
                 style={styles.picker}
               >
                 <Picker.Item
-                label="Select staff"
+                  label="Select staff"
                   value=""
-                  color={Platform.OS === "ios" ? "#9CA3AF" : undefined} 
+                  color={Platform.OS === "ios" ? "#9CA3AF" : undefined}
                 />
                 {users.map((user) => (
                   <Picker.Item
@@ -566,21 +574,28 @@ export default function CreateTaskScreen() {
                 </Text>
                 <View style={styles.pickerContainer}>
                   <Picker
-                    key={`patients-${patients.length}`}
+                    //  key={`patients-${patients.length}`}
                     selectedValue={formData.patientId}
                     onValueChange={(value) => updateField("patientId", value)}
-                   enabled={!patientsLoading}
-                   style={{width: 200}}
-                   itemStyle={{fontSize: 16}}
+                    enabled={!patientsLoading}
+                    style={styles.picker}
+                    itemStyle={{ fontSize: 16 }}
                   >
-                    <Picker.Item label="Select patient" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined}  />
-                    {patients.map((patient) => (
+                    {/* <Picker.Item label="Select patient" value="" color={Platform.OS === "ios" ? "#9CA3AF" : undefined}  /> */}
+                    {patients.length === 0 ? (
                       <Picker.Item
-                        key={patient.id}
-                        label={`${patient.name} - Room ${patient.roomNumber}`}
-                        value={patient.id}
+                        label="Loading"
+                        color={Platform.OS === "ios" ? "#9CA3AF" : undefined}
                       />
-                    ))}
+                    ) : (
+                      patients.map((patient) => (
+                        <Picker.Item
+                          key={patient.id}
+                          label={`${patient.name} - Room ${patient.roomNumber}`}
+                          value={patient.id}
+                        />
+                      ))
+                    )}
                   </Picker>
                 </View>
               </>
@@ -724,5 +739,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1F2937",
   },
-})
-
+});

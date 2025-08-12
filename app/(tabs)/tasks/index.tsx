@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { Link, Stack } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { Link, Stack, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,10 +12,10 @@ import {
   View,
 } from "react-native";
 // MODIFICATION: Import UserRole
-import { Task, TaskPriority, TaskStatus, UserRole } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { Task, TaskPriority, TaskStatus, UserRole } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 
 
 interface TaskListItemProps {
@@ -160,8 +160,22 @@ const sortTasks = (tasks: Task[]): Task[] => {
 
 export default function TasksScreen() {
   const { accessToken, user } = useAuth();
+  const params = useLocalSearchParams<{ priority?: string }>();
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<TaskStatus | "All">("All");
+  const [filterType, setFilterType] = useState<"status" | "priority">("status");
+  const [activeStatusFilter, setActiveStatusFilter] = useState<TaskStatus | "All">("All");
+  const [activePriorityFilter, setActivePriorityFilter] = useState<TaskPriority | "All">("All");
+
+  // Handle priority parameter from navigation
+  useEffect(() => {
+    if (params.priority) {
+      // Convert the string parameter to TaskPriority enum
+      const priorityValue = params.priority.toUpperCase() as TaskPriority;
+      if (Object.values(TaskPriority).includes(priorityValue)) {
+        setActivePriorityFilter(priorityValue);
+      }
+    }
+  }, [params.priority]);
 
   const {
     data: tasks,
@@ -170,24 +184,39 @@ export default function TasksScreen() {
     error,
     refetch,
   } = useQuery<Task[], Error>({
-    // MODIFICATION: Updated queryKey to include user's role
-    queryKey: ["tasks", user?.id, user?.role, activeFilter],
+    // MODIFICATION: Updated queryKey to include user's role and filters
+    queryKey: ["tasks", user?.id, user?.role, activeStatusFilter, activePriorityFilter],
     // MODIFICATION: Pass user role to fetchTasks
-    queryFn: () => fetchTasks(accessToken, user?.role, activeFilter),
+    queryFn: () => fetchTasks(accessToken, user?.role, activeStatusFilter),
     enabled: !!accessToken && !!user?.id && !!user?.role,
   });
 
-  // MODIFICATION: Memoized sorted tasks
+  // MODIFICATION: Memoized sorted and filtered tasks
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
-    return sortTasks(tasks);
-  }, [tasks]);
+    
+    // Apply priority filter on the client side
+    let filteredTasks = tasks;
+    if (activePriorityFilter !== "All") {
+      filteredTasks = tasks.filter(task => task.priority === activePriorityFilter);
+    }
+    
+    return sortTasks(filteredTasks);
+  }, [tasks, activePriorityFilter]);
 
-  const filterOptions: (TaskStatus | "All")[] = [
+  const statusFilterOptions: (TaskStatus | "All")[] = [
     "All",
     TaskStatus.PENDING,
     TaskStatus.IN_PROGRESS,
     TaskStatus.COMPLETED,
+  ];
+
+  const priorityFilterOptions: (TaskPriority | "All")[] = [
+    "All",
+    TaskPriority.CRITICAL,
+    TaskPriority.HIGH,
+    TaskPriority.MEDIUM,
+    TaskPriority.LOW,
   ];
 
   // MODIFICATION: Check if user can create tasks
@@ -251,12 +280,28 @@ export default function TasksScreen() {
           </View>
         </View>
 
-        {/* MODIFICATION: Active filter indicator */}
-        <View className="mb-4 flex-row items-center">
+        {/* MODIFICATION: Active filters indicator */}
+        <View className="mb-4 flex-row items-center flex-wrap">
           <Text className="font-semibold text-gray-500">Showing:</Text>
           <Text className="ml-2 rounded-full bg-blue-100 px-3 py-1 font-bold text-blue-600">
-            {activeFilter}
+            Status: {activeStatusFilter}
           </Text>
+          {activePriorityFilter !== "All" && (
+            <Text className="ml-2 rounded-full bg-red-100 px-3 py-1 font-bold text-red-600">
+              Priority: {activePriorityFilter}
+            </Text>
+          )}
+          {(activeStatusFilter !== "All" || activePriorityFilter !== "All") && (
+            <TouchableOpacity
+              onPress={() => {
+                setActiveStatusFilter("All");
+                setActivePriorityFilter("All");
+              }}
+              className="ml-2 rounded-full bg-gray-100 px-3 py-1"
+            >
+              <Text className="font-bold text-gray-600">Clear All</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* MODIFICATION: Use sortedTasks for the list */}
@@ -292,31 +337,91 @@ export default function TasksScreen() {
           className="flex-1 justify-end bg-black/40"
         >
           <View className="rounded-t-2xl bg-white p-5 shadow-lg">
-            <Text className="mb-5 text-center text-xl font-bold">
-              Filter by Status
-            </Text>
-            {filterOptions.map((option) => (
+            {/* Filter Type Tabs */}
+            <View className="mb-5 flex-row rounded-lg bg-gray-100 p-1">
               <TouchableOpacity
-                key={option}
-                onPress={() => {
-                  setActiveFilter(option);
-                  setFilterModalVisible(false);
-                }}
-                className={`mb-2 rounded-lg p-4 ${
-                  activeFilter === option ? "bg-blue-100" : "bg-gray-100"
+                onPress={() => setFilterType("status")}
+                className={`flex-1 rounded-md py-2 ${
+                  filterType === "status" ? "bg-white shadow-sm" : ""
                 }`}
               >
                 <Text
                   className={`text-center font-semibold ${
-                    activeFilter === option
-                      ? "text-blue-600"
-                      : "text-gray-800"
+                    filterType === "status" ? "text-blue-600" : "text-gray-600"
                   }`}
                 >
-                  {option}
+                  Status
                 </Text>
               </TouchableOpacity>
-            ))}
+              <TouchableOpacity
+                onPress={() => setFilterType("priority")}
+                className={`flex-1 rounded-md py-2 ${
+                  filterType === "priority" ? "bg-white shadow-sm" : ""
+                }`}
+              >
+                <Text
+                  className={`text-center font-semibold ${
+                    filterType === "priority" ? "text-blue-600" : "text-gray-600"
+                  }`}
+                >
+                  Priority
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text className="mb-5 text-center text-xl font-bold">
+              Filter by {filterType === "status" ? "Status" : "Priority"}
+            </Text>
+
+            {/* Status Filter Options */}
+            {filterType === "status" &&
+              statusFilterOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => {
+                    setActiveStatusFilter(option);
+                    setFilterModalVisible(false);
+                  }}
+                  className={`mb-2 rounded-lg p-4 ${
+                    activeStatusFilter === option ? "bg-blue-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-center font-semibold ${
+                      activeStatusFilter === option
+                        ? "text-blue-600"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+            {/* Priority Filter Options */}
+            {filterType === "priority" &&
+              priorityFilterOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => {
+                    setActivePriorityFilter(option);
+                    setFilterModalVisible(false);
+                  }}
+                  className={`mb-2 rounded-lg p-4 ${
+                    activePriorityFilter === option ? "bg-red-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-center font-semibold ${
+                      activePriorityFilter === option
+                        ? "text-red-600"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
           </View>
         </Pressable>
       </Modal>

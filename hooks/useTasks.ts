@@ -1,13 +1,12 @@
 // hooks/useTasks.ts
 import { useQuery } from '@tanstack/react-query';
 import { Task, TaskPriority, TaskStatus, UserRole } from '@/lib/types';
+import api from '@/lib/api';
 
 const fetchTaskById = async (taskId: string): Promise<Task> => {
-    const response = await fetch(`192.168.214.201:8000/tasks/${taskId}`);
-    if (!response.ok) {
-        throw new Error('Failed to fetch task');
-    }
-    return response.json();
+    const response = await api.get(`tasks/${taskId}`);
+    
+    return response.data;
 };
 
 export const useTask = (taskId: string) => {

@@ -201,9 +201,11 @@ const TaskCard = ({ task }: TaskCardProps) => {
   );
 };
 
-// --- Main Dashboard Screen ---
+//  Main Dashboard Screen 
 export default function DashboardScreen() {
   const { user, accessToken } = useAuth();
+  const notificationCount = 0;
+
   const {
     data: tasks,
     isLoading,
@@ -213,9 +215,7 @@ export default function DashboardScreen() {
     queryKey: ["tasks", "dashboard", user?.id], // Use a specific key for the dashboard
     queryFn: async () => {
       // Fetch all tasks, filtering can be done on the client for the dashboard
-      const { data } = await api.get("/tasks", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const { data } = await api.get("/tasks");
       return data;
     },
     enabled: !!accessToken && !!user?.id,
@@ -264,24 +264,27 @@ export default function DashboardScreen() {
   // This component renders the main content of the list.
   const ListHeaderComponent = () => (
     <>
-      {/* --- Header --- */}
+      {/*  Header  */}
       <View className="flex-row justify-between items-center mb-6">
         <View>
           <Text className="text-2xl font-bold text-gray-800">
             Good Morning,
           </Text>
           <Text className="text-2xl font-bold text-blue-600">
-            {user?.role} {user?.firstName.toLowerCase()}{" "}
-            {user?.lastName.toLowerCase()}
+            {user?.role} {user?.firstName?.toLowerCase()}
+            {user?.lastName?.toLowerCase()}
+
           </Text>
         </View>
         <View className="flex-row items-center">
           <TouchableOpacity className="mr-4">
             <Feather name="bell" size={26} color="#374151" />
             {/* NOTE: In a real app, this notification count should be dynamic. */}
-            <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 justify-center items-center">
-              <Text className="text-white text-xs font-bold">3</Text>
-            </View>
+            {notificationCount > 0 && (
+              <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 justify-center items-center">
+                <Text className="text-white text-xs font-bold">{notificationCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <Link href="/profile">
             <Image
@@ -292,7 +295,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* --- Summary Cards --- */}
+      {/*  Summary Cards  */}
       <View className="flex-row justify-center mb-8">
         <SummaryCard
           title="New Tasks"
@@ -317,7 +320,7 @@ export default function DashboardScreen() {
         />
       </View>
 
-      {/* --- Due Soon Task List Header --- */}
+      {/*  Due Soon Task List Header  */}
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-xl font-bold text-gray-800">Due Soon</Text>
         <Link href="/tasks" asChild>
@@ -331,14 +334,11 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
-      {/* BEST PRACTICE: Using FlatList instead of ScrollView for better performance with lists. */}
       <FlatList
         data={dueSoonTasks}
         renderItem={({ item }) => <TaskCard task={item} />}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={ListHeaderComponent}
-        // FIX: The contentContainerStyle adds padding to the scrollable area.
-        // 'px-5' adds horizontal padding and 'pt-4' adds top padding to push content down.
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 36 }}
       />
     </SafeAreaView>

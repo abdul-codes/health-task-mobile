@@ -1,5 +1,3 @@
-/* TaskDetailsScreen.tsx */
-
 import React from "react";
 import {
   ScrollView,
@@ -16,7 +14,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import api from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
 import { TaskPriority, TaskStatus } from "@/lib/types";
 
 const taskSchema = z.object({
@@ -29,7 +26,7 @@ const taskSchema = z.object({
   patient: z
     .object({
       name: z.string(),
-      roomNumber: z.string(),
+      roomNumber: z.string().nullable(),
     })
     .nullable()
     .optional(),
@@ -53,15 +50,10 @@ const statusStyles = {
 
 export function useUpdateStatus(taskId: string) {
   const queryClient = useQueryClient();
-  const { accessToken } = useAuth();
 
   return useMutation({
     mutationFn: async (status: TaskStatus) => {
-      const { data } = await api.patch(
-        `/tasks/${taskId}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const { data } = await api.patch(`/tasks/${taskId}/status`, { status });
       return taskSchema.parse(data);
     },
     onSuccess: (updatedTask) => {
@@ -71,7 +63,7 @@ export function useUpdateStatus(taskId: string) {
     onError: (err: any) => {
       Alert.alert(
         "Update Failed",
-        err?.response?.data?.message || "The task status could not be updated."
+        err?.response?.data?.message || "The task status could not be updated.",
       );
     },
   });
@@ -125,9 +117,7 @@ function ActionBar({ task }: { task: Task }) {
           <Ionicons
             name="checkmark-done-circle"
             size={24}
-            color={
-              task.status === TaskStatus.COMPLETED ? "#10B981" : "#6B7280"
-            }
+            color={task.status === TaskStatus.COMPLETED ? "#10B981" : "#6B7280"}
           />
           <Text className="text-gray-600 font-semibold text-base mt-2">
             Task {task.status.toLowerCase()}
@@ -169,7 +159,7 @@ function ActionBar({ task }: { task: Task }) {
 
   const primaryAction = availableActions.find((a) => a.style === "primary");
   const destructiveAction = availableActions.find(
-    (a) => a.style === "destructive"
+    (a) => a.style === "destructive",
   );
 
   return (
@@ -188,7 +178,7 @@ function ActionBar({ task }: { task: Task }) {
                     style: "destructive",
                     onPress: () => mutate(destructiveAction.next),
                   },
-                ]
+                ],
               );
             }}
             disabled={isPending}
@@ -241,7 +231,6 @@ function ActionBar({ task }: { task: Task }) {
 
 export default function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { accessToken } = useAuth();
 
   const {
     data: task,
@@ -251,10 +240,9 @@ export default function TaskDetailsScreen() {
     queryKey: ["task", id],
     queryFn: async () => {
       if (!id) throw new Error("Task ID is missing");
-      const { data } = await api.get(`/tasks/${id}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const { data } = await api.get(`/tasks/${id}`);
       return taskSchema.parse(data);
+      //return data;
     },
     enabled: !!id,
   });
@@ -348,10 +336,18 @@ export default function TaskDetailsScreen() {
               )}
               <View className="flex-row items-center">
                 <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-   
+
                 <Text className="ml-3 text-xl text-gray-800">
-                      Due: {new Date(task.dueDate).toLocaleString("en-US", { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-                    </Text>
+                  Due:{" "}
+                  {new Date(task.dueDate).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </Text>
               </View>
             </View>
           </View>

@@ -9,10 +9,12 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk",
         "env": {
@@ -30,7 +32,8 @@
           "EXPO_PUBLIC_API_URL": "https://health-task-backend.vercel.app/api",
           "FCM_SERVICE_ACCOUNT_KEY": "@env:FCM_SERVICE_ACCOUNT_KEY"
         }
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

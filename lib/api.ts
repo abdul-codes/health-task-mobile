@@ -125,36 +125,20 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // const response = await axios.post(
-        //        `${api.defaults.baseURL}/api/auth/refresh`,
-        //        { refreshToken: currentRefreshToken }
-        //      );
-        // const { data } = await axios.post<{
-        //       accessToken: string;
-        //       refreshToken: string;
-        //     }>(`/auth/refresh`, { refreshToken: currentRefreshToken }, {
-        //       baseURL: getBaseUrl(), // FIX: Ensure refresh call also uses the dynamic URL
-        //     });
-        const { data } = await api.post("/auth/refresh", { refreshToken: currentRefreshToken });
+        const { data } = await axios.post(`${getBaseUrl()}/auth/refresh`, { refreshToken: currentRefreshToken });
 
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = data;
 
         const user = useAuthStore.getState().user;
 
-        if (user) {
-          useAuthStore
-            .getState()
-            .setAuth(newAccessToken, newRefreshToken, user);
-        } else {
-          // Edge Case: If user is somehow null, logout to be safe
+        if (!user) {
           useAuthStore.getState().logout();
-          return Promise.reject(
-            new Error("User not found during token refresh"),
-          );
+          return Promise.reject(new Error("User not found during token refresh"));
         }
-        useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user!);
+        
+        useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user);
+        // update original request with new token and process queue as you already do
 
-        // Update original request with new token
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         }
