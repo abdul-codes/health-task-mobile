@@ -61,6 +61,17 @@ export interface Patient {
   createdBy: User;
 }
 
+// Notification interface
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  data: any;
+  isRead: boolean;
+  createdAt: string;
+  userId: string;
+}
+
 // Department interface
 export interface Department {
   id: string;

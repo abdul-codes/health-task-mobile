@@ -5,6 +5,7 @@ import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import api from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 
 type Task = {
@@ -92,6 +93,7 @@ const getAge = (dobString: string) => {
 };
 
 export default function PatientDetailScreen() {
+  const { user } = useAuth();
   const { id, name } = useLocalSearchParams<{ id: string, name?: string }>();
 
   const { data: patient, isLoading, isError, error, refetch } = useQuery<PatientDetail, Error>({
@@ -228,17 +230,19 @@ export default function PatientDetailScreen() {
         })}
       />
 
-      <Link 
-        href={{ 
-          pathname: "/tasks/create", 
-          params: { patientId: patient.id, patientName: patient.name } 
-        }} 
-        asChild
-      >
-        <TouchableOpacity className="absolute bottom-6 right-6 bg-blue-600 w-16 h-16 rounded-full items-center justify-center shadow-lg">
-          <Ionicons name="add" size={32} color="white" />
-        </TouchableOpacity>
-      </Link>
+      {(user?.role === "ADMIN" || user?.role === "DOCTOR") && (
+        <Link 
+          href={{ 
+            pathname: "/tasks/create", 
+            params: { patientId: patient.id, patientName: patient.name } 
+          }} 
+          asChild
+        >
+          <TouchableOpacity className="absolute bottom-6 right-6 bg-blue-600 w-16 h-16 rounded-full items-center justify-center shadow-lg">
+            <Ionicons name="add" size={32} color="white" />
+          </TouchableOpacity>
+        </Link>
+      )}
     </SafeAreaView>
   );
 }

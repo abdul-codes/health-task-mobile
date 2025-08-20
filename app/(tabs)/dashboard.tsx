@@ -297,13 +297,23 @@ export default function DashboardScreen() {
 
       {/*  Summary Cards  */}
       <View className="flex-row justify-center mb-8">
-        <SummaryCard
-          title="New Tasks"
-          count={newTasksCount}
-          iconName="plus-circle"
-          color="#3B82F6"
-          href="/tasks/create"
-        />
+        {(user?.role === "ADMIN" || user?.role === "DOCTOR") ? (
+          <SummaryCard
+            title="New Tasks"
+            count={newTasksCount}
+            iconName="plus-circle"
+            color="#3B82F6"
+            href="/tasks/create"
+          />
+        ) : (
+          <SummaryCard
+            title="My Tasks"
+            count={tasks?.filter(t => t.assignedTo?.id === user?.id).length || 0}
+            iconName="check-square"
+            color="#10B981"
+            href={{ pathname: "/tasks", params: { filter: "mine" } }}
+          />
+        )}
         <SummaryCard
           title="All Tasks"
           count={allTasksCount}

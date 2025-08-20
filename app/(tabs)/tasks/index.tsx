@@ -97,6 +97,7 @@ const fetchTasks = async (
   accessToken: string | null,
   userRole: UserRole | undefined,
   activeFilter: TaskStatus | "All",
+  mineFilter: boolean,
 ): Promise<Task[]> => {
   if (!accessToken || !userRole) {
     return [];
@@ -108,7 +109,10 @@ const fetchTasks = async (
   let tasks: Task[] = [];
 
   try {
-    if (userRole === UserRole.Admin) {
+    if (mineFilter) {
+      const { data } = await api.get("/tasks/my-tasks", { headers, params });
+      tasks = data;
+    } else if (userRole === UserRole.Admin) {
       // Admin gets all tasks
       const { data } = await api.get("/tasks", { headers, params });
       tasks = data;
@@ -158,13 +162,15 @@ const sortTasks = (tasks: Task[]): Task[] => {
   });
 };
 
+
 export default function TasksScreen() {
   const { accessToken, user } = useAuth();
-  const params = useLocalSearchParams<{ priority?: string }>();
+  const params = useLocalSearchParams<{ priority?: string; filter?: string }>();
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filterType, setFilterType] = useState<"status" | "priority">("status");
   const [activeStatusFilter, setActiveStatusFilter] = useState<TaskStatus | "All">("All");
   const [activePriorityFilter, setActivePriorityFilter] = useState<TaskPriority | "All">("All");
+  const [activeMineFilter, setActiveMineFilter] = useState<boolean>(false);
 
   // Handle priority parameter from navigation
   useEffect(() => {
@@ -175,7 +181,10 @@ export default function TasksScreen() {
         setActivePriorityFilter(priorityValue);
       }
     }
-  }, [params.priority]);
+    if (params.filter === 'mine') {
+      setActiveMineFilter(true);
+    }
+  }, [params]);
 
   const {
     data: tasks,
@@ -185,9 +194,9 @@ export default function TasksScreen() {
     refetch,
   } = useQuery<Task[], Error>({
     // MODIFICATION: Updated queryKey to include user's role and filters
-    queryKey: ["tasks", user?.id, user?.role, activeStatusFilter, activePriorityFilter],
+    queryKey: ["tasks", user?.id, user?.role, activeStatusFilter, activePriorityFilter, activeMineFilter],
     // MODIFICATION: Pass user role to fetchTasks
-    queryFn: () => fetchTasks(accessToken, user?.role, activeStatusFilter),
+    queryFn: () => fetchTasks(accessToken, user?.role, activeStatusFilter, activeMineFilter),
     enabled: !!accessToken && !!user?.id && !!user?.role,
   });
 
@@ -219,9 +228,7 @@ export default function TasksScreen() {
     TaskPriority.LOW,
   ];
 
-  // MODIFICATION: Check if user can create tasks
-  const canCreateTasks =
-    user?.role === UserRole.Admin || user?.role === UserRole.Doctor;
+  
 
   if (isLoading) {
     return (
@@ -270,7 +277,7 @@ export default function TasksScreen() {
               </Text>
             </TouchableOpacity>
             {/* MODIFICATION: Conditionally render Create Task button */}
-            {canCreateTasks && (
+            {(user?.role === UserRole.Admin || user?.role === UserRole.Doctor) && (
               <Link href="/tasks/create" asChild>
                 <TouchableOpacity className="flex-row items-center rounded-full bg-blue-500 px-2 py-2 shadow-sm">
                   <Ionicons name="add" size={22} color="white" />
@@ -286,16 +293,22 @@ export default function TasksScreen() {
           <Text className="ml-2 rounded-full bg-blue-100 px-3 py-1 font-bold text-blue-600">
             Status: {activeStatusFilter}
           </Text>
+          {activeMineFilter && (
+            <Text className="ml-2 rounded-full bg-green-100 px-3 py-1 font-bold text-green-600">
+              My Tasks
+            </Text>
+          )}
           {activePriorityFilter !== "All" && (
             <Text className="ml-2 rounded-full bg-red-100 px-3 py-1 font-bold text-red-600">
               Priority: {activePriorityFilter}
             </Text>
           )}
-          {(activeStatusFilter !== "All" || activePriorityFilter !== "All") && (
+          {(activeStatusFilter !== "All" || activePriorityFilter !== "All" || activeMineFilter) && (
             <TouchableOpacity
               onPress={() => {
                 setActiveStatusFilter("All");
                 setActivePriorityFilter("All");
+                setActiveMineFilter(false);
               }}
               className="ml-2 rounded-full bg-gray-100 px-3 py-1"
             >

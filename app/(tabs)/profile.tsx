@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 const ProfileScreen = () => {
   const { user, logout } = useAuth();
 
@@ -29,15 +31,15 @@ const ProfileScreen = () => {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="p-5 border-b border-gray-200 bg-white">
-        <Text className="text-3xl font-bold text-gray-800">Profile</Text>
-      </View>
+      <LinearGradient colors={['#4A9FB8', '#2E7D9A']} className="p-5 pb-24 rounded-b-3xl">
+        <Text className="text-3xl font-bold text-white text-center">Profile</Text>
+      </LinearGradient>
 
       {/* Profile Details */}
-      <View className="items-center p-8">
+      <View className="items-center -mt-16">
         <Image
           source={{ uri: 'https://i.pravatar.cc/150?u=emilycarter' }}
-          className="w-28 h-28 rounded-full mb-5"
+          className="w-28 h-28 rounded-full mb-5 border-4 border-white shadow-lg"
           // A11y Enhancement: Add an accessibility label for screen readers.
           accessibilityLabel="User profile picture"
         />
@@ -59,19 +61,38 @@ const ProfileScreen = () => {
         </View>
       </View>
 
+      {/* Action Menu */}
+      <View className="px-6 mt-8">
+        <TouchableOpacity className="bg-white p-4 rounded-lg shadow-sm mb-4 flex-row items-center">
+          <Ionicons name="person-outline" size={22} color="#374151" />
+          <Text className="text-lg text-gray-800 ml-4">Edit Profile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="bg-white p-4 rounded-lg shadow-sm mb-4 flex-row items-center">
+          <Ionicons name="lock-closed-outline" size={22} color="#374151" />
+          <Text className="text-lg text-gray-800 ml-4">Change Password</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="bg-white p-4 rounded-lg shadow-sm mb-4 flex-row items-center">
+          <Ionicons name="notifications-outline" size={22} color="#374151" />
+          <Text className="text-lg text-gray-800 ml-4">Notification Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="bg-white p-4 rounded-lg shadow-sm mb-4 flex-row items-center">
+          <Ionicons name="shield-checkmark-outline" size={22} color="#374151" />
+          <Text className="text-lg text-gray-800 ml-4">Privacy Policy</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Spacer to push logout button to the bottom */}
       <View className="flex-1" />
 
       {/* Logout Button */}
-      <View className="p-5">
+      <View className="p-6">
         <TouchableOpacity 
-          // UX Enhancement: Refined button style to be less alarming.
-          className="flex-row items-center justify-center bg-red-50 p-4 rounded-xl border border-red-200" 
+          className="flex-row items-center justify-center bg-red-500 p-4 rounded-xl shadow-lg" 
           onPress={handleLogout}
           accessibilityLabel="Logout button"
         >
-          <Ionicons name="log-out-outline" size={22} color="#DC2626" />
-          <Text className="text-red-600 ml-3 text-lg font-semibold">
+          <Ionicons name="log-out-outline" size={22} color="white" />
+          <Text className="text-white ml-3 text-lg font-semibold">
             Logout
           </Text>
         </TouchableOpacity>
