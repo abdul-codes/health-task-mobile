@@ -22,25 +22,35 @@ declare module "axios" {
 // lib/env.ts
 
 export const getBaseUrl = (): string => {
-  // 1. explicit env var (works in both dev & prod)
+  // For production/preview builds (EAS), always use the public API URL.
+  // This environment variable MUST be set in your EAS build configuration.
   if (process.env.EXPO_PUBLIC_API_URL) {
     console.log("🔗 Using EXPO_PUBLIC_API_URL:", process.env.EXPO_PUBLIC_API_URL);
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  // 2. running inside Expo Go / dev-client?
-  const hostUri = Constants.expoConfig?.hostUri; // "192.168.1.25:8081"
-  const lanIp = hostUri?.split(":")[0];
+  // The following logic is for DEVELOPMENT ONLY (running with `npx expo start`)
+  if (__DEV__) {
+    // 2. running inside Expo Go / dev-client?
+    const hostUri = Constants.expoConfig?.hostUri; // e.g., "192.168.1.25:8081"
+    const lanIp = hostUri?.split(":")[0];
 
-  if (lanIp) {
-    console.log("🔗 Using LAN IP from Metro:", `http://${lanIp}:8000`);
-    return `http://${lanIp}:8000`;
+    if (lanIp) {
+      const url = `http://${lanIp}:8000`;
+      console.log("🔗 Using LAN IP from Metro (DEV):", url);
+      return url;
+    }
+
+    // 3. fallback for simulators / CI in DEV
+    const fallbackHost = Platform.OS === "android" ? "10.0.2.2" : "localhost";
+    const url = `http://${fallbackHost}:8000`;
+    console.log("🔗 Using fallback host (DEV):", url);
+    return url;
   }
-
-  // 3. fallback for simulators / CI
-  const fallbackHost = Platform.OS === "android" ? "10.0.2.2" : "localhost";
-  console.log("🔗 Using fallback host:", `http://${fallbackHost}:8000`);
-  return `http://${fallbackHost}:8000`;
+  
+  // If we are in production and EXPO_PUBLIC_API_URL is not set, we have a problem.
+  // Throw an error to make it clear that the configuration is missing.
+  throw new Error("EXPO_PUBLIC_API_URL is not set for this production build.");
 };
 
 const api = axios.create({
