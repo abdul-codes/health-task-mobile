@@ -32,7 +32,7 @@ const NotificationListItem = ({ item }: { item: Notification }) => {
     if (!item.isRead) {
       mutation.mutate();
     }
-    // Handle navigation based on notification data
+    // Navigation is handled by the Link wrapper
   };
 
   const getIcon = (data: any) => {
@@ -41,8 +41,19 @@ const NotificationListItem = ({ item }: { item: Notification }) => {
     return "notifications-outline";
   };
 
+  const getHref = (data: any): string => {
+    if (data?.taskId) {
+      return `/tasks/${data.taskId}`;
+    }
+    if (data?.patientId) {
+      return `/patients/${data.patientId}`;
+    }
+    // Fallback for notifications without a specific linkable item
+    return `/notifications`;
+  };
+
   return (
-    <Link href={item.data?.taskId ? `/tasks/${item.data.taskId}` : "/notifications"} asChild>
+    <Link href={getHref(item.data)} asChild>
       <TouchableOpacity onPress={handlePress}>
         <View
           className={`flex-row items-center p-4 mb-4 rounded-xl ${

@@ -277,15 +277,18 @@ export default function DashboardScreen() {
           </Text>
         </View>
         <View className="flex-row items-center">
-          <TouchableOpacity className="mr-4">
-            <Feather name="bell" size={26} color="#374151" />
-            {/* NOTE: In a real app, this notification count should be dynamic. */}
-            {notificationCount > 0 && (
-              <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 justify-center items-center">
-                <Text className="text-white text-xs font-bold">{notificationCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <Link href="/notifications" asChild>
+            <TouchableOpacity className="mr-4">
+              <Feather name="bell" size={26} color="#374151" />
+              {notificationCount > 0 && (
+                <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 justify-center items-center">
+                  <Text className="text-white text-xs font-bold">
+                    {notificationCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </Link>
           <Link href="/profile">
             <Image
               source={{ uri: "https://i.pravatar.cc/150?u=emilycarter" }}

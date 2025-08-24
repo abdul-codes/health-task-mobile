@@ -118,6 +118,9 @@ export function usePushNotifications() {
         const data = notification.request.content
           .data as { taskId?: string; patientId?: string } | undefined;
 
+        // Invalidate notifications query to update notification screen and dashboard badge
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
         if (data?.taskId) {
           // invalidate lists and the specific task
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
