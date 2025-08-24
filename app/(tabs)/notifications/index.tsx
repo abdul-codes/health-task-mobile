@@ -41,15 +41,21 @@ const NotificationListItem = ({ item }: { item: Notification }) => {
     return "notifications-outline";
   };
 
-  const getHref = (data: any): string => {
+  const getHref = (data: any) => {
     if (data?.taskId) {
-      return `/tasks/${data.taskId}`;
+      return {
+        pathname: "/tasks/[id]" as const,
+        params: { id: data.taskId },
+      };
     }
     if (data?.patientId) {
-      return `/patients/${data.patientId}`;
+      return {
+        pathname: "/patients/[id]" as const,
+        params: { id: data.patientId },
+      };
     }
     // Fallback for notifications without a specific linkable item
-    return `/notifications`;
+    return "/notifications" as const;
   };
 
   return (
