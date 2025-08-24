@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// MODIFICATION: Import UserRole
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { Task, TaskPriority, TaskStatus, UserRole } from "@/lib/types";
@@ -92,53 +91,35 @@ const TaskListItem = ({ item }: TaskListItemProps) => {
 
 // --- Main Tasks List Screen ---
 
-// MODIFICATION: Updated fetchTasks to handle role-based fetching
+// NEW: Simplified fetchTasks function. The backend now handles all role-based logic.
 const fetchTasks = async (
   accessToken: string | null,
-  userRole: UserRole | undefined,
-  activeFilter: TaskStatus | "All",
-  mineFilter: boolean,
+  params: {
+    status?: TaskStatus | "All";
+    view?: 'mine';
+  }
 ): Promise<Task[]> => {
-  if (!accessToken || !userRole) {
+  if (!accessToken) {
     return [];
   }
 
-  const params = activeFilter === "All" ? {} : { status: activeFilter };
-  const headers = { Authorization: `Bearer ${accessToken}` };
-
-  let tasks: Task[] = [];
+  // Clean up params before sending
+  const queryParams: any = { ...params };
+  if (queryParams.status === "All") {
+    delete queryParams.status;
+  }
 
   try {
-    if (mineFilter) {
-      const { data } = await api.get("/tasks/my-tasks", { headers, params });
-      tasks = data;
-    } else if (userRole === UserRole.Admin) {
-      // Admin gets all tasks
-      const { data } = await api.get("/tasks", { headers, params });
-      tasks = data;
-    } else if (userRole === UserRole.Doctor) {
-      // Doctor gets assigned tasks and tasks created by them
-      const [assignedResponse, createdResponse] = await Promise.all([
-        api.get("/tasks/my-tasks", { headers, params }),
-        api.get("/tasks/created-by-me", { headers, params }),
-      ]);
-      // Merge and remove duplicates
-      const taskMap = new Map<string, Task>();
-      assignedResponse.data.forEach((task: Task) => taskMap.set(task.id, task));
-      createdResponse.data.forEach((task: Task) => taskMap.set(task.id, task));
-      tasks = Array.from(taskMap.values());
-    } else {
-      // Other roles (NURSE, LABTECH) get tasks assigned to them
-      const { data } = await api.get("/tasks/my-tasks", { headers, params });
-      tasks = data;
-    }
+    const { data } = await api.get("/tasks", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: queryParams,
+    });
+    return data;
   } catch (error) {
     console.error("Failed to fetch tasks:", error);
     // Re-throw the error to be caught by React Query
     throw error;
   }
-
-  return tasks;
 };
 
 // MODIFICATION: Helper for sorting tasks
