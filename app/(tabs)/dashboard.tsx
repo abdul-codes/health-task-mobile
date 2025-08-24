@@ -312,7 +312,7 @@ export default function DashboardScreen() {
           <SummaryCard
             title="My Tasks"
             count={tasks?.filter(t => t.assignedTo?.id === user?.id).length || 0}
-            iconName="check-square"
+            iconName="user-check"
             color="#10B981"
             href={{ pathname: "/tasks", params: { filter: "mine" } }}
           />

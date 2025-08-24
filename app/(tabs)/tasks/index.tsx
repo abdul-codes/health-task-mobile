@@ -193,11 +193,18 @@ export default function TasksScreen() {
     error,
     refetch,
   } = useQuery<Task[], Error>({
-    // MODIFICATION: Updated queryKey to include user's role and filters
-    queryKey: ["tasks", user?.id, user?.role, activeStatusFilter, activePriorityFilter, activeMineFilter],
-    // MODIFICATION: Pass user role to fetchTasks
-    queryFn: () => fetchTasks(accessToken, user?.role, activeStatusFilter, activeMineFilter),
-    enabled: !!accessToken && !!user?.id && !!user?.role,
+    // NEW: Simplified queryKey and queryFn
+    queryKey: ["tasks", user?.id, activeStatusFilter, activePriorityFilter, activeMineFilter],
+    queryFn: () => {
+      const params: any = { status: activeStatusFilter };
+      if (activeMineFilter) {
+        params.view = 'mine';
+      }
+      // The priority filter is applied on the client-side in this file,
+      // but could be moved to the backend by adding it to params here.
+      return fetchTasks(accessToken, params);
+    },
+    enabled: !!accessToken && !!user?.id,
   });
 
   // MODIFICATION: Memoized sorted and filtered tasks

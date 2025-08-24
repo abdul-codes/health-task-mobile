@@ -58,27 +58,56 @@ const NotificationListItem = ({ item }: { item: Notification }) => {
     return "/notifications" as const;
   };
 
+  // Use memoization for the timestamp to avoid recalculating on every render
+  const timeAgo = useMemo(() => {
+    const date = new Date(item.createdAt);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m ago";
+    return "Just now";
+  }, [item.createdAt]);
+
   return (
     <Link href={getHref(item.data)} asChild>
-      <TouchableOpacity onPress={handlePress}>
-        <View
-          className={`flex-row items-center p-4 mb-4 rounded-xl ${
-            item.isRead ? "bg-white" : "bg-blue-50"
-          }`}
-        >
-          <View className='w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4'>
-            <Ionicons name={getIcon(item.data)} size={24} color="#3B82F6" />
+      <TouchableOpacity
+        onPress={handlePress}
+        className={`bg-white rounded-xl shadow-sm overflow-hidden mb-4 border-l-4 ${
+          item.isRead ? "border-transparent" : "border-blue-500"
+        }`}
+      >
+        <View className="flex-row items-start p-4">
+          <View
+            className={`w-10 h-10 rounded-full items-center justify-center mr-4 mt-1 ${
+              item.isRead ? "bg-gray-100" : "bg-blue-100"
+            }`}
+          >
+            <Ionicons
+              name={getIcon(item.data)}
+              size={20}
+              color={item.isRead ? "#6B7280" : "#3B82F6"}
+            />
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-bold text-gray-800">{item.title}</Text>
-            <Text className="text-base text-gray-600 mt-1">{item.body}</Text>
-            <Text className="text-sm text-gray-400 mt-2">
-              {new Date(item.createdAt).toLocaleString()}
+            <Text className="text-base font-bold text-gray-800 leading-tight">
+              {item.title}
+            </Text>
+            <Text className="text-sm text-gray-600 mt-1 leading-snug">
+              {item.body}
             </Text>
           </View>
-          {!item.isRead && (
-            <View className="w-3 h-3 bg-blue-500 rounded-full ml-4" />
-          )}
+          <Text className="text-xs text-gray-400 ml-2 whitespace-nowrap">
+            {timeAgo}
+          </Text>
         </View>
       </TouchableOpacity>
     </Link>

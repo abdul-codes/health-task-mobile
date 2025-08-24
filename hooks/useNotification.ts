@@ -100,11 +100,14 @@ export function usePushNotifications() {
             const data = lastResponse.notification.request.content
               .data as { taskId?: string; patientId?: string } | undefined;
 
-            if (data?.taskId) {
-              router.push(`/tasks/${data.taskId}`);
-            } else if (data?.patientId) {
-              router.push(`/patients/${data.patientId}`);
-            }
+            // Use a timeout to ensure the router is ready before pushing a new route
+            setTimeout(() => {
+              if (data?.taskId) {
+                router.push(`/tasks/${data.taskId}`);
+              } else if (data?.patientId) {
+                router.push(`/patients/${data.patientId}`);
+              }
+            }, 100);
           }
         } catch {
           // non-fatal
@@ -142,11 +145,14 @@ export function usePushNotifications() {
         const data = response.notification.request.content
           .data as { taskId?: string; patientId?: string } | undefined;
 
-        if (data?.taskId) {
-          router.push(`/tasks/${data.taskId}`);
-        } else if (data?.patientId) {
-          router.push(`/patients/${data.patientId}`);
-        }
+        // Use a timeout to ensure the router is ready before pushing a new route
+        setTimeout(() => {
+          if (data?.taskId) {
+            router.push(`/tasks/${data.taskId}`);
+          } else if (data?.patientId) {
+            router.push(`/patients/${data.patientId}`);
+          }
+        }, 100);
       });
 
     // cleanup
