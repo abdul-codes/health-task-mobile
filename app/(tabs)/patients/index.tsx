@@ -5,7 +5,6 @@ import { Link, useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Text,
   TouchableOpacity,
@@ -31,14 +30,8 @@ type Patient = {
 
 // Fetches the list of all patients from the backend
 const fetchPatients = async (): Promise<Patient[]> => {
-  // Using the same hardcoded IP as in other files. This should be moved to an env variable.
-
-   
   const { data } = await api.get("/patients");
   return data;
-  // console.error("Failed to fetch patients:", error);
-   // Alert.alert("'Network Error' Please try again");
- 
 };
 
 // A card component to display individual patient information
@@ -87,11 +80,11 @@ export default function PatientsScreen() {
   // useFocusEffect is a hook from expo-router that refetches data
   // every time the screen comes into focus. This ensures the list is
   // up-to-date after creating a new patient and navigating back.
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     refetch();
-  //   }, [refetch]),
-  // );
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const renderContent = () => {
     if (isLoading) {

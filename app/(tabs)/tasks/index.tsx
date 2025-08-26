@@ -165,7 +165,7 @@ export default function TasksScreen() {
     if (params.filter === 'mine') {
       setActiveMineFilter(true);
     }
-  }, [params]);
+  }, [params.priority, params.filter]);
 
   const {
     data: tasks,
@@ -188,7 +188,7 @@ export default function TasksScreen() {
     enabled: !!accessToken && !!user?.id,
   });
 
-  // MODIFICATION: Memoized sorted and filtered tasks
+  // MODIFICATION: Memoized sorted and filtered tasks with better performance
   const sortedTasks = useMemo(() => {
     if (!tasks) return [];
     
@@ -200,6 +200,13 @@ export default function TasksScreen() {
     
     return sortTasks(filteredTasks);
   }, [tasks, activePriorityFilter]);
+  
+  // Add this useEffect to reset filters when navigating away and back
+  useEffect(() => {
+    return () => {
+      // Cleanup function - you might want to reset filters here if needed
+    };
+  }, []);
 
   const statusFilterOptions: (TaskStatus | "All")[] = [
     "All",
@@ -292,16 +299,19 @@ export default function TasksScreen() {
             </Text>
           )}
           {(activeStatusFilter !== "All" || activePriorityFilter !== "All" || activeMineFilter) && (
-            <TouchableOpacity
-              onPress={() => {
-                setActiveStatusFilter("All");
-                setActivePriorityFilter("All");
-                setActiveMineFilter(false);
-              }}
-              className="ml-2 rounded-full bg-gray-100 px-3 py-1"
-            >
-              <Text className="font-bold text-gray-600">Clear All</Text>
-            </TouchableOpacity>
+            <View className="flex-row ml-2">
+              <TouchableOpacity
+                onPress={() => {
+                  setActiveStatusFilter("All");
+                  setActivePriorityFilter("All");
+                  setActiveMineFilter(false);
+                }}
+                className="rounded-full bg-gray-100 px-3 py-1 flex-row items-center"
+              >
+                <Ionicons name="close" size={16} color="#4B5563" />
+                <Text className="font-bold text-gray-600 ml-1">Clear All</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 

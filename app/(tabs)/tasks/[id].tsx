@@ -16,6 +16,12 @@ import { z } from "zod";
 import api from "@/lib/api";
 import { TaskPriority, TaskStatus } from "@/lib/types";
 
+const userSchema = z.object({
+  id: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+});
+
 const taskSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -30,6 +36,8 @@ const taskSchema = z.object({
     })
     .nullable()
     .optional(),
+  createdBy: userSchema,
+  assignedTo: userSchema.optional().nullable(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
@@ -336,7 +344,6 @@ export default function TaskDetailsScreen() {
               )}
               <View className="flex-row items-center">
                 <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-
                 <Text className="ml-3 text-xl text-gray-800">
                   Due:{" "}
                   {new Date(task.dueDate).toLocaleString("en-US", {
@@ -349,6 +356,20 @@ export default function TaskDetailsScreen() {
                   })}
                 </Text>
               </View>
+              <View className="flex-row items-center">
+                <Ionicons name="person-add-outline" size={20} color="#6B7280" />
+                <Text className="ml-3 text-xl text-gray-800">
+                  Created by: {task.createdBy.firstName} {task.createdBy.lastName}
+                </Text>
+              </View>
+              {task.assignedTo && (
+                <View className="flex-row items-center">
+                  <Ionicons name="person-circle-outline" size={20} color="#6B7280" />
+                  <Text className="ml-3 text-xl text-gray-800">
+                    Assigned to: {task.assignedTo.firstName} {task.assignedTo.lastName}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>

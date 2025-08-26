@@ -1,41 +1,33 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MMKV } from 'react-native-mmkv';
 import { StateStorage } from 'zustand/middleware';
 
+const storage = new MMKV();
 
 export const asyncStoragePersister = {
   getItem: (name: string): Promise<string | null> => {
-    return AsyncStorage.getItem(name);
+    const value = storage.getString(name);
+    return Promise.resolve(value ?? null);
   },
   setItem: (name: string, value: string): Promise<void> => {
-    return AsyncStorage.setItem(name, value);
+    storage.set(name, value);
+    return Promise.resolve();
   },
   removeItem: (name: string): Promise<void> => {
-    return AsyncStorage.removeItem(name);
+    storage.delete(name);
+    return Promise.resolve();
   },
 };
 
 
 export const zustandStorage: StateStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    try {
-      return await AsyncStorage.getItem(name);
-    } catch (e) {
-      console.error('Failed to fetch item from AsyncStorage', e);
-      return null;
-    }
+  getItem: (name: string) => {
+    const value = storage.getString(name);
+    return value ?? null;
   },
-  setItem: async (name: string, value: string): Promise<void> => {
-    try {
-      await AsyncStorage.setItem(name, value);
-    } catch (e) {
-      console.error('Failed to save item to AsyncStorage', e);
-    }
+  setItem: (name: string, value: string) => {
+    storage.set(name, value);
   },
-  removeItem: async (name: string): Promise<void> => {
-    try {
-      await AsyncStorage.removeItem(name);
-    } catch (e) {
-      console.error('Failed to remove item from AsyncStorage', e);
-    }
+  removeItem: (name: string) => {
+    storage.delete(name);
   },
 };

@@ -3,7 +3,7 @@
     "name": "medicTask",
     "slug": "medictask",
     "jsEngine": "hermes",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/medic-icon.png",
     "scheme": "medictask",

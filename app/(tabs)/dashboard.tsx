@@ -16,18 +16,18 @@ import api from "@/lib/api";
 import { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { z } from "zod";
 
-const taskSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional(),
-  status: z.nativeEnum(TaskStatus),
-  priority: z.nativeEnum(TaskPriority),
-  dueDate: z.string().datetime(),
-  patient: z.object({
-    name: z.string(),
-    roomNumber: z.string().nullable(), // Allow roomNumber to be null
-  }),
-});
+// const taskSchema = z.object({
+//   id: z.string(),
+//   title: z.string(),
+//   description: z.string().optional(),
+//   status: z.nativeEnum(TaskStatus),
+//   priority: z.nativeEnum(TaskPriority),
+//   dueDate: z.string().datetime(),
+//   patient: z.object({
+//     name: z.string(),
+//     roomNumber: z.string().nullable(), // Allow roomNumber to be null
+//   }),
+// });
 // const taskArraySchema = z.array(taskSchema);
 
 interface SummaryCardProps {
@@ -329,7 +329,7 @@ export default function DashboardScreen() {
           count={criticalTasksCount}
           iconName="alert-triangle"
           isCritical
-          href={{ pathname: "/tasks", params: { priority: "Critical" } }}
+          href={{ pathname: "/tasks", params: { priority: "CRITICAL" } }}
         />
       </View>
 
