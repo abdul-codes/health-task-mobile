@@ -151,8 +151,7 @@ export default function CreateTaskScreen() {
 
   // Mutation for creating a task
   const { mutate: createTask, isPending: isSubmitting } = useMutation({
-    mutationFn: (taskData: CreateTaskInput) =>
-      api.post("/tasks", taskData),
+    mutationFn: (taskData: CreateTaskInput) => api.post("/tasks", taskData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({

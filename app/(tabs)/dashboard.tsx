@@ -201,7 +201,7 @@ const TaskCard = ({ task }: TaskCardProps) => {
   );
 };
 
-//  Main Dashboard Screen 
+//  Main Dashboard Screen
 export default function DashboardScreen() {
   const { user, accessToken } = useAuth();
   const notificationCount = 0;
@@ -273,7 +273,6 @@ export default function DashboardScreen() {
           <Text className="text-2xl font-bold text-blue-600">
             {user?.role} {user?.firstName?.toLowerCase()}
             {user?.lastName?.toLowerCase()}
-
           </Text>
         </View>
         <View className="flex-row items-center">
@@ -300,7 +299,7 @@ export default function DashboardScreen() {
 
       {/*  Summary Cards  */}
       <View className="flex-row justify-center mb-8">
-        {(user?.role === "ADMIN" || user?.role === "DOCTOR") ? (
+        {user?.role === "ADMIN" || user?.role === "DOCTOR" ? (
           <SummaryCard
             title="New Tasks"
             count={newTasksCount}

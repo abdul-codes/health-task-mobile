@@ -1,33 +1,19 @@
-import { MMKV } from 'react-native-mmkv';
-import { StateStorage } from 'zustand/middleware';
+import { MMKV } from "react-native-mmkv";
 
 const storage = new MMKV();
 
-export const asyncStoragePersister = {
-  getItem: (name: string): Promise<string | null> => {
-    const value = storage.getString(name);
-    return Promise.resolve(value ?? null);
-  },
-  setItem: (name: string, value: string): Promise<void> => {
-    storage.set(name, value);
-    return Promise.resolve();
-  },
-  removeItem: (name: string): Promise<void> => {
-    storage.delete(name);
-    return Promise.resolve();
-  },
-};
-
-
-export const zustandStorage: StateStorage = {
-  getItem: (name: string) => {
+// By removing the explicit `: StateStorage` type annotation, we let TypeScript
+// infer a stricter, synchronous type. This inferred type is compatible with
+// both Zustand's `persist` middleware and TanStack Query's `createSyncStoragePersister`.
+export const mmkvStorage = {
+  getItem: (name: string): string | null => {
     const value = storage.getString(name);
     return value ?? null;
   },
-  setItem: (name: string, value: string) => {
+  setItem: (name: string, value: string): void => {
     storage.set(name, value);
   },
-  removeItem: (name: string) => {
+  removeItem: (name: string): void => {
     storage.delete(name);
   },
 };

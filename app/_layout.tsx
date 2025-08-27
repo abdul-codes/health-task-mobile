@@ -1,8 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AppState, AppStateStatus, View, ActivityIndicator, Text, StyleSheet, } from "react-native";
+import {
+  AppState,
+  AppStateStatus,
+  View,
+  ActivityIndicator,
+  Text,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import {PersistQueryClientProvider} from "@tanstack/react-query-persist-client";
-import {createAsyncStoragePersister} from "@tanstack/query-async-storage-persister";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { StatusBar } from "expo-status-bar";
 import { Stack, SplashScreen, useSegments, useRouter } from "expo-router";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
@@ -11,18 +18,12 @@ import { useAuth } from "../hooks/useAuth";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
 import "../global.css";
-import { asyncStoragePersister } from "@/lib/asyncStorage";
+import { mmkvStorage } from "@/lib/asyncStorage";
 import { usePushNotifications } from "@/hooks/useNotification";
-// import { mmkvStorage } from "@/lib/mmkvStorage";
 
-
-
-// const mmkvAsyncPersister = createAsyncStoragePersister({
-//   storage: mmkvStorage,
-// });
-const asyncStoragePerisiser = createAsyncStoragePersister({
-  storage: asyncStoragePersister
-})
+const syncStoragePersister = createSyncStoragePersister({
+  storage: mmkvStorage,
+});
 
 //Error Boundary Fallback                                           */
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -50,7 +51,7 @@ function useProtectedRoute(sessionState: SessionState) {
     const inTabsGroup = segments[0] === "(tabs)";
 
     // If the session is still loading, do nothing.
-    if (sessionState === 'loading') return;
+    if (sessionState === "loading") return;
 
     if (sessionState === "authenticated" && !inTabsGroup) {
       // Redirect to the dashboard if the user is authenticated but not in the main app area.
@@ -59,23 +60,25 @@ function useProtectedRoute(sessionState: SessionState) {
       // Redirect to the login screen if the user is not authenticated but somehow in the main app area.
       router.replace("/login");
     }
-
   }, [sessionState, segments, router]);
 }
 
 //Root Layout                                                        */
 export default function RootLayout() {
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{persister: asyncStoragePerisiser}}> 
-    <ErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onError={(error, errorInfo) => {
-        console.error("Error Boundary caught an error:", error, errorInfo);
-      }}
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: syncStoragePersister }}
+    >
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onError={(error, errorInfo) => {
+          console.error("Error Boundary caught an error:", error, errorInfo);
+        }}
       >
         <RootLayoutNav />
-    </ErrorBoundary>
-      </PersistQueryClientProvider>
+      </ErrorBoundary>
+    </PersistQueryClientProvider>
   );
 }
 
@@ -87,8 +90,6 @@ function RootLayoutNav() {
   const { isAuthenticated, user } = useAuth();
   const [sessionState, setSessionState] = useState<SessionState>("loading");
   const [hasInitialized, setHasInitialized] = useState(false);
-  
-  
 
   // Validate session on app start and resume
   const validateSession = useCallback(async () => {
@@ -156,9 +157,8 @@ function RootLayoutNav() {
     );
     return () => subscription?.remove();
   }, [hasInitialized, validateSession]);
-  
-  usePushNotifications()
-  
+
+  usePushNotifications();
 
   useProtectedRoute(sessionState);
 
@@ -178,8 +178,6 @@ function RootLayoutNav() {
     // If you *do* want to re-validate every time auth changes, you can add this back with `validateSession` as a dependency.
   }, [isAuthenticated, hasInitialized]);
 
-
-
   // Loading screen
   if (sessionState === "loading" || !hasInitialized) {
     return (
@@ -189,18 +187,17 @@ function RootLayoutNav() {
       </View>
     );
   }
-   
 
   return (
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <NetworkStatusIndicator isOnline={isOnline ?? true} />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </SafeAreaProvider>
+    <SafeAreaProvider>
+      <StatusBar style="auto" />
+      <NetworkStatusIndicator isOnline={isOnline ?? true} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
 // Network Status Indicator

@@ -25,7 +25,10 @@ export const getBaseUrl = (): string => {
   // For production/preview builds (EAS), always use the public API URL.
   // This environment variable MUST be set in your EAS build configuration.
   if (process.env.EXPO_PUBLIC_API_URL) {
-    console.log("🔗 Using EXPO_PUBLIC_API_URL:", process.env.EXPO_PUBLIC_API_URL);
+    console.log(
+      "🔗 Using EXPO_PUBLIC_API_URL:",
+      process.env.EXPO_PUBLIC_API_URL,
+    );
     return process.env.EXPO_PUBLIC_API_URL;
   }
 
@@ -47,7 +50,7 @@ export const getBaseUrl = (): string => {
     console.log("🔗 Using fallback host (DEV):", url);
     return url;
   }
-  
+
   // If we are in production and EXPO_PUBLIC_API_URL is not set, we have a problem.
   // Throw an error to make it clear that the configuration is missing.
   throw new Error("EXPO_PUBLIC_API_URL is not set for this production build.");
@@ -64,7 +67,7 @@ const api = axios.create({
 // Add a request interceptor to include the auth token in requests
 api.interceptors.request.use(
   (config) => {
-    const {accessToken} = useAuthStore.getState();
+    const { accessToken } = useAuthStore.getState();
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -135,7 +138,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post(`${getBaseUrl()}/auth/refresh`, { refreshToken: currentRefreshToken });
+        const { data } = await axios.post(`${getBaseUrl()}/auth/refresh`, {
+          refreshToken: currentRefreshToken,
+        });
 
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = data;
 
@@ -143,9 +148,11 @@ api.interceptors.response.use(
 
         if (!user) {
           useAuthStore.getState().logout();
-          return Promise.reject(new Error("User not found during token refresh"));
+          return Promise.reject(
+            new Error("User not found during token refresh"),
+          );
         }
-        
+
         useAuthStore.getState().setAuth(newAccessToken, newRefreshToken, user);
         // update original request with new token and process queue as you already do
 
