@@ -1,19 +1,17 @@
-//import api from '@/lib/api';
-import { secureStorage } from '@/lib/itemStore';
-import { queryClient } from '@/lib/queryClient';
-import { User } from '@/lib/types';
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { mmkvStorage } from "@/lib/asyncStorage";
+import { queryClient } from "@/lib/queryClient";
+import { User } from "@/lib/types";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (accessToken: string, refreshToken: string, user: User) => void; 
+  setAuth: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
 }
-
 
 const useAuthStore = create<AuthState>()(
   persist(
@@ -23,19 +21,23 @@ const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       setAuth: (accessToken: string, refreshToken: string, user: User) => {
-
-      set({ user, accessToken, refreshToken, isAuthenticated: true });
+        set({ user, accessToken, refreshToken, isAuthenticated: true });
       },
       logout: () => {
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
-        queryClient.clear()
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        });
+        queryClient.clear();
       },
     }),
     {
-      name: 'auth-storage',
-      storage: createJSONStorage(() => secureStorage),
-    }
-  )
+      name: "auth-storage",
+      storage: createJSONStorage(() => mmkvStorage),
+    },
+  ),
 );
 
 export const useAuth = useAuthStore;

@@ -1,7 +1,8 @@
 import { io, Socket } from "socket.io-client";
+import { getBaseUrl } from "./api";
 
 // Replace with your actual backend server URL in a .env file for production
-const SERVER_URL = "http://192.168.0.3:8000"; 
+const SERVER_URL = getBaseUrl(); 
 
 let socket: Socket;
 
