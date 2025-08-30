@@ -13,7 +13,7 @@ import { Link, Href } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import { Notification, Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { z } from "zod";
 
 // const taskSchema = z.object({
@@ -204,7 +204,17 @@ const TaskCard = ({ task }: TaskCardProps) => {
 //  Main Dashboard Screen
 export default function DashboardScreen() {
   const { user, accessToken } = useAuth();
-  const notificationCount = 0;
+
+  const { data: notifications } = useQuery<Notification[]>({
+    queryKey: ["notifications", user?.id],
+    queryFn: async () => {
+      const { data } = await api.get("/notifications");
+      return data;
+    },
+    enabled: !!accessToken && !!user?.id,
+  });
+
+  const notificationCount = notifications?.filter((n) => !n.isRead).length || 0;
 
   const {
     data: tasks,
@@ -290,7 +300,7 @@ export default function DashboardScreen() {
           </Link>
           <Link href="/profile">
             <Image
-              source={{ uri: "https://i.pravatar.cc/150?u=emilycarter" }}
+              source={{ uri: "https://www.collinsdictionary.com/images/thumb/doctor_117169531_250.jpg?version=6.0.84" }}
               className="w-12 h-12 rounded-full"
             />
           </Link>
@@ -310,7 +320,9 @@ export default function DashboardScreen() {
         ) : (
           <SummaryCard
             title="My Tasks"
-            count={tasks?.filter(t => t.assignedTo?.id === user?.id).length || 0}
+            count={
+              tasks?.filter((t) => t.assignedTo?.id === user?.id).length || 0
+            }
             iconName="user-check"
             color="#10B981"
             href={{ pathname: "/tasks", params: { filter: "mine" } }}

@@ -183,6 +183,11 @@ export default function RegisterScreen() {
                       onValueChange={setRole}
                       style={{ height: 56 }}
                     >
+                      <Picker.Item
+                        label="Select your role"
+                        value=""
+                        color={Platform.OS === "ios" ? "#9CA3AF" : undefined}
+                      />
                       {roles.map((roleOption) => (
                         <Picker.Item
                           key={roleOption.value}

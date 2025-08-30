@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import api from "@/lib/api";
-import { TaskPriority, TaskStatus } from "@/lib/types";
+import { TaskPriority, TaskStatus, UserRole } from "@/lib/types";
 
 const userSchema = z.object({
   id: z.string(),
@@ -37,6 +37,7 @@ const taskSchema = z.object({
     .nullable()
     .optional(),
   createdBy: userSchema,
+  role: z.nativeEnum(UserRole),
   assignedTo: userSchema.optional().nullable(),
 });
 

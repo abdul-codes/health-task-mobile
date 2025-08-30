@@ -26,6 +26,7 @@ type PatientDetail = {
   createdBy: {
     firstName: string;
     lastName: string;
+    role: string;
   } | null;
 };
 
@@ -120,7 +121,7 @@ export default function PatientDetailScreen() {
       formattedDob: new Date(patient.dob).toLocaleDateString(),
       taskCount: patient.tasks.length,
       managerName: patient.createdBy 
-        ? `Dr. ${patient.createdBy.firstName} ${patient.createdBy.lastName}`
+        ? `${patient.createdBy.role}. ${patient.createdBy.firstName} ${patient.createdBy.lastName}`
         : null
     };
   }, [patient]);
