@@ -1,6 +1,6 @@
 import { mmkvStorage } from "@/lib/asyncStorage";
 import { queryClient } from "@/lib/queryClient";
-import { User } from "@/lib/types";
+import { User, UserRole } from "@/lib/types";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -9,6 +9,7 @@ export interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
+  role: UserRole | null;
   setAuth: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
 }
@@ -20,8 +21,15 @@ const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      role: null,
       setAuth: (accessToken: string, refreshToken: string, user: User) => {
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+        set({
+          user,
+          accessToken,
+          refreshToken,
+          isAuthenticated: true,
+          role: user.role,
+        });
       },
       logout: () => {
         set({
@@ -29,6 +37,7 @@ const useAuthStore = create<AuthState>()(
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
+          role: null,
         });
         queryClient.clear();
       },

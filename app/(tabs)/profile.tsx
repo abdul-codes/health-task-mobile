@@ -42,12 +42,10 @@ const StatCard = ({
 const ProfileScreen = () => {
   const { user, logout } = useAuth();
 
-  // IMPROVED: Use a dedicated statistics endpoint (fallback to current method if endpoint doesn't exist)
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<UserStatistics>({
     queryKey: ['userStatistics', user?.id], // More specific query key
     queryFn: async (): Promise<UserStatistics> => {
       try {
-        // Try to use the dedicated statistics endpoint first
         const { data } = await api.get('/users/statistics');
         return data as UserStatistics;
       } catch (apiError) {
