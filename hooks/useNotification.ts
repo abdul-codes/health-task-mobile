@@ -15,7 +15,7 @@ Notifications.setNotificationHandler({
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: false,
-    shouldShowList: false,  
+    shouldShowList: false,
   }),
 });
 
@@ -32,7 +32,8 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== "granted") {
@@ -44,7 +45,6 @@ export async function registerForPushNotificationsAsync() {
       console.log("User did not grant permission for push notifications.");
       return;
     }
-    
 
     token = (
       await Notifications.getExpoPushTokenAsync({
@@ -97,8 +97,9 @@ export function usePushNotifications() {
             await Notifications.getLastNotificationResponseAsync();
           if (lastResponse && !handledInitialResponseRef.current) {
             handledInitialResponseRef.current = true;
-            const data = lastResponse.notification.request.content
-              .data as { taskId?: string; patientId?: string } | undefined;
+            const data = lastResponse.notification.request.content.data as
+              | { taskId?: string; patientId?: string }
+              | undefined;
 
             // Use a timeout to ensure the router is ready before pushing a new route
             setTimeout(() => {
@@ -118,8 +119,9 @@ export function usePushNotifications() {
     // Foreground: received while app is open → do targeted cache refreshes
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        const data = notification.request.content
-          .data as { taskId?: string; patientId?: string } | undefined;
+        const data = notification.request.content.data as
+          | { taskId?: string; patientId?: string }
+          | undefined;
 
         // Invalidate notifications query to update notification screen and dashboard badge
         queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -142,8 +144,9 @@ export function usePushNotifications() {
     // Tap on a notification while app is warm
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content
-          .data as { taskId?: string; patientId?: string } | undefined;
+        const data = response.notification.request.content.data as
+          | { taskId?: string; patientId?: string }
+          | undefined;
 
         // Use a timeout to ensure the router is ready before pushing a new route
         setTimeout(() => {
@@ -159,14 +162,10 @@ export function usePushNotifications() {
     return () => {
       isMounted = false;
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(
-          notificationListener.current,
-        );
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(
-          responseListener.current,
-        );
+        responseListener.current.remove();
       }
     };
   }, [user, router, queryClient]);
