@@ -22,6 +22,16 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { TaskPriority, TaskStatus } from "@/lib/types";
+import { useDocumentScanner } from "@/hooks/useDocumentScanner";
+import { useOCR } from "@/hooks/useOCR";
+import { useR2Upload } from "@/hooks/useR2Upload";
+import { useCreateScannedDocument } from "@/hooks/useScannedDocuments";
+import {
+  parsePrescription,
+  generateMedicationTasks,
+  MedicationTask,
+  calculateTotalTasks,
+} from "@/utils/prescriptionScheduler";
 
 // Keep your existing interfaces
 interface User {
@@ -131,6 +141,24 @@ export default function CreateTaskScreen() {
     height: 0,
   });
 
+  // Prescription scanning state
+  const [isScanningPrescription, setIsScanningPrescription] = useState(false);
+  const [scannedPrescription, setScannedPrescription] = useState<{
+    medication: string;
+    dosage: string;
+    frequency: string;
+    duration: number;
+    confidence: number;
+  } | null>(null);
+  const [generatedTasks, setGeneratedTasks] = useState<MedicationTask[]>([]);
+  const [showPrescriptionPreview, setShowPrescriptionPreview] = useState(false);
+
+  // Scanning hooks
+  const { scanDocument } = useDocumentScanner();
+  const { recognizeText } = useOCR();
+  const { uploadImage } = useR2Upload();
+  const { mutateAsync: createScannedDocument } = useCreateScannedDocument();
+
   const updateField = useCallback((field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prevErrors) => {
@@ -198,6 +226,162 @@ export default function CreateTaskScreen() {
     });
     setDueDateOption("custom");
     setErrors({});
+  };
+
+  const handleScanPrescription = async () => {
+    if (!formData.patientId) {
+      Alert.alert(
+        "Patient Required",
+        "Please select a patient before scanning a prescription."
+      );
+      return;
+    }
+
+    try {
+      setIsScanningPrescription(true);
+
+      // 1. Open document scanner
+      const scanResult = await scanDocument();
+      if (!scanResult) {
+        setIsScanningPrescription(false);
+        return;
+      }
+
+      // 2. Run OCR on scanned image
+      const ocrResult = await recognizeText(scanResult.imagePath);
+
+      // 3. Upload to R2
+      const uploadResult = await uploadImage(scanResult.imagePath, {
+        folder: "prescriptions",
+        patientId: formData.patientId,
+      });
+
+      // 4. Parse prescription fields
+      const prescriptionData = parsePrescription(ocrResult.text);
+
+      if (!prescriptionData.medication || !prescriptionData.frequency) {
+        Alert.alert(
+          "Parse Error",
+          "Could not identify medication details. Please try again or enter manually."
+        );
+        setIsScanningPrescription(false);
+        return;
+      }
+
+      setScannedPrescription({
+        medication: prescriptionData.medication,
+        dosage: prescriptionData.dosage || "",
+        frequency: prescriptionData.frequency,
+        duration: prescriptionData.duration || 7,
+        confidence: ocrResult.confidence,
+      });
+
+      // Save scanned document reference
+      await createScannedDocument({
+        patientId: formData.patientId,
+        imageUrl: uploadResult.url,
+        documentType: "prescription",
+        extractedText: ocrResult.text,
+        confidence: ocrResult.confidence,
+        status: ocrResult.confidence > 0.8 ? "verified" : "needs_review",
+      });
+
+      // 5. Generate medication tasks
+      const tasks = generateMedicationTasks({
+        medication: prescriptionData.medication,
+        dosage: prescriptionData.dosage,
+        frequency: prescriptionData.frequency,
+        duration: prescriptionData.duration || 7,
+        patientId: formData.patientId,
+        assignedToId: formData.assignedToId || undefined,
+        startDate: new Date(),
+      });
+
+      setGeneratedTasks(tasks);
+
+      // 6. Calculate and show preview with task count
+      const totalTasks = calculateTotalTasks(
+        prescriptionData.frequency,
+        prescriptionData.duration || 7
+      );
+
+      setIsScanningPrescription(false);
+      setShowPrescriptionPreview(true);
+
+      Alert.alert(
+        "Prescription Scanned",
+        `Found: ${prescriptionData.medication}\n` +
+          `Dosage: ${prescriptionData.dosage || "N/A"}\n` +
+          `Frequency: ${prescriptionData.frequency}\n` +
+          `Duration: ${prescriptionData.duration || 7} days\n\n` +
+          `This will create ${totalTasks} medication tasks.`,
+        [
+          {
+            text: "Review",
+            onPress: () => {
+              // Show prescription preview modal
+              setShowPrescriptionPreview(true);
+            },
+          },
+          {
+            text: "Create All Tasks",
+            onPress: () => {
+              handleCreateMedicationTasks(tasks);
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              setGeneratedTasks([]);
+              setScannedPrescription(null);
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      setIsScanningPrescription(false);
+      console.error("Prescription scan error:", error);
+      Alert.alert(
+        "Scan Failed",
+        error.message || "Failed to scan prescription. Please try again."
+      );
+    }
+  };
+
+  const handleCreateMedicationTasks = async (tasks: MedicationTask[]) => {
+    try {
+      // Create tasks in batch
+      const promises = tasks.map((task) =>
+        api.post("/tasks", {
+          ...task,
+          priority: TaskPriority.HIGH,
+          status: TaskStatus.PENDING,
+        })
+      );
+
+      await Promise.all(promises);
+
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({
+        queryKey: ["patient", formData.patientId],
+      });
+
+      setShowPrescriptionPreview(false);
+      setGeneratedTasks([]);
+      setScannedPrescription(null);
+
+      Alert.alert(
+        "Success",
+        `${tasks.length} medication tasks created successfully!`
+      );
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create medication tasks";
+      Alert.alert("Error", message);
+    }
   };
 
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
@@ -601,6 +785,43 @@ export default function CreateTaskScreen() {
             )}
           </View>
 
+          {/* Scan Prescription Button */}
+          <View className="mb-6">
+            <Text className="text-base font-semibold text-gray-700 mb-2">
+              Quick Actions
+            </Text>
+            <TouchableOpacity
+              onPress={handleScanPrescription}
+              disabled={isScanningPrescription || !formData.patientId}
+              className={`flex-row items-center justify-center py-4 rounded-xl border-2 border-dashed ${
+                isScanningPrescription || !formData.patientId
+                  ? "border-gray-300 bg-gray-100"
+                  : "border-blue-500 bg-blue-50"
+              }`}
+            >
+              <Ionicons
+                name="scan-outline"
+                size={24}
+                color={!formData.patientId ? "#9CA3AF" : "#3B82F6"}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                className={`font-semibold text-lg ${
+                  !formData.patientId ? "text-gray-400" : "text-blue-600"
+                }`}
+              >
+                {isScanningPrescription
+                  ? "Scanning..."
+                  : "Scan Prescription"}
+              </Text>
+            </TouchableOpacity>
+            {!formData.patientId && (
+              <Text className="text-gray-400 text-sm mt-2 text-center">
+                Select a patient to enable prescription scanning
+              </Text>
+            )}
+          </View>
+
           {/* Buttons */}
           <TouchableOpacity
             onPress={handleSubmit}
@@ -681,6 +902,134 @@ export default function CreateTaskScreen() {
           onChange={onTimeChange}
         />
       )}
+
+      {/* Prescription Preview Modal */}
+      <Modal
+        visible={showPrescriptionPreview}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPrescriptionPreview(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-gray-800">
+                Prescription Preview
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowPrescriptionPreview(false)}
+                className="p-2"
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {scannedPrescription && (
+              <View className="bg-blue-50 rounded-xl p-4 mb-4">
+                <Text className="text-sm text-gray-600 mb-1">Medication</Text>
+                <Text className="text-lg font-bold text-gray-800 mb-3">
+                  {scannedPrescription.medication}
+                </Text>
+
+                <View className="flex-row mb-3">
+                  <View className="flex-1">
+                    <Text className="text-sm text-gray-600">Dosage</Text>
+                    <Text className="text-base font-semibold text-gray-800">
+                      {scannedPrescription.dosage || "N/A"}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm text-gray-600">Frequency</Text>
+                    <Text className="text-base font-semibold text-gray-800">
+                      {scannedPrescription.frequency}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row">
+                  <View className="flex-1">
+                    <Text className="text-sm text-gray-600">Duration</Text>
+                    <Text className="text-base font-semibold text-gray-800">
+                      {scannedPrescription.duration} days
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm text-gray-600">Confidence</Text>
+                    <Text
+                      className={`text-base font-semibold ${
+                        scannedPrescription.confidence > 0.8
+                          ? "text-green-600"
+                          : "text-yellow-600"
+                      }`}
+                    >
+                      {Math.round(scannedPrescription.confidence * 100)}%
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <Text className="text-base font-semibold text-gray-700 mb-3">
+              Generated Tasks ({generatedTasks.length} total)
+            </Text>
+
+            <ScrollView className="max-h-64 mb-4">
+              {generatedTasks.slice(0, 10).map((task, index) => (
+                <View
+                  key={index}
+                  className="flex-row items-center py-3 border-b border-gray-100"
+                >
+                  <View className="w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-3">
+                    <Text className="text-sm font-bold text-blue-600">
+                      {index + 1}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-800">
+                      {task.title}
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      {new Date(task.dueDate).toLocaleDateString()} at{" "}
+                      {new Date(task.dueDate).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              {generatedTasks.length > 10 && (
+                <Text className="text-center text-gray-500 py-2">
+                  ... and {generatedTasks.length - 10} more tasks
+                </Text>
+              )}
+            </ScrollView>
+
+            <View className="flex-row space-x-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPrescriptionPreview(false);
+                  setGeneratedTasks([]);
+                  setScannedPrescription(null);
+                }}
+                className="flex-1 py-3 rounded-xl border border-gray-300"
+              >
+                <Text className="text-center text-gray-700 font-semibold">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleCreateMedicationTasks(generatedTasks)}
+                className="flex-1 py-3 rounded-xl bg-blue-600"
+              >
+                <Text className="text-center text-white font-bold">
+                  Create {generatedTasks.length} Tasks
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
