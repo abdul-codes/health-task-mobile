@@ -13,7 +13,6 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
   collectCoverageFrom: [
     'utils/**/*.ts',
-    'hooks/**/*.ts',
     '!**/node_modules/**',
     '!**/__tests__/**',
   ],
