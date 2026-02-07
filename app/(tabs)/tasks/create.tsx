@@ -26,7 +26,6 @@ import { useDocumentScanner } from "@/hooks/useDocumentScanner";
 import { useOCR } from "@/hooks/useOCR";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { useCreateScannedDocument } from "@/hooks/useScannedDocuments";
-import { parseDocument } from "@/utils/documentParser";
 import {
   parsePrescription,
   generateMedicationTasks,

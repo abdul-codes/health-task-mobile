@@ -14,7 +14,6 @@ import { useAuth } from "../../hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { Notification, Task, TaskPriority, TaskStatus } from "@/lib/types";
-import { z } from "zod";
 
 // const taskSchema = z.object({
 //   id: z.string(),
