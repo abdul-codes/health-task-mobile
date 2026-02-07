@@ -11,13 +11,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router"; 
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import api from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useDocumentScanner } from "@/hooks/useDocumentScanner";
+import { useOCR } from "@/hooks/useOCR";
+import { useR2Upload } from "@/hooks/useR2Upload";
+import { useCreateScannedDocument } from "@/hooks/useScannedDocuments";
+import { parseDocument } from "@/utils/documentParser";
 
 const patientSchema = z.object({
   name: z.string().min(2, { message: "Patient name must be at least 2 characters." }),
@@ -34,6 +39,19 @@ type User = {
   firstName: string;
   lastName: string;
   role: string;
+};
+
+type ExtractedField = {
+  value: string;
+  confidence: number;
+};
+
+type ParsedDocument = {
+  name?: ExtractedField;
+  age?: ExtractedField;
+  phone?: ExtractedField;
+  address?: ExtractedField;
+  gender?: ExtractedField;
 };
 
 const fetchAssignableUsers = async (): Promise<User[]> => {
@@ -166,6 +184,119 @@ export default function CreatePatientScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
+  // Scanning state
+  const [scanning, setScanning] = useState(false);
+  const [scannedFields, setScannedFields] = useState<Set<string>>(new Set());
+  const [lowConfidenceFields, setLowConfidenceFields] = useState<Set<string>>(new Set());
+
+  // Scanning hooks
+  const { scanDocument } = useDocumentScanner();
+  const { extractText } = useOCR();
+  const { uploadImage } = useR2Upload();
+  const { createScannedDocument } = useCreateScannedDocument();
+
+  // Handle document scan
+  const handleScanDocument = async () => {
+    try {
+      setScanning(true);
+
+      // Step 1: Scan document
+      const imagePath = await scanDocument();
+      if (!imagePath) {
+        setScanning(false);
+        return;
+      }
+
+      // Step 2: Extract text using OCR
+      const ocrResult = await extractText(imagePath);
+
+      // Step 3: Upload image to R2
+      const uploadResult = await uploadImage(imagePath);
+
+      // Step 4: Parse document fields
+      const parsedDoc: ParsedDocument = parseDocument(ocrResult.text);
+
+      // Step 5: Pre-fill form fields
+      const newScannedFields = new Set<string>();
+      const newLowConfidenceFields = new Set<string>();
+
+      if (parsedDoc.name) {
+        setName(parsedDoc.name.value);
+        newScannedFields.add("name");
+        if (parsedDoc.name.confidence < 70) {
+          newLowConfidenceFields.add("name");
+        }
+      }
+
+      if (parsedDoc.age) {
+        // Calculate DOB from age
+        const age = parseInt(parsedDoc.age.value, 10);
+        if (!isNaN(age)) {
+          const today = new Date();
+          const birthYear = today.getFullYear() - age;
+          const dobDate = new Date(birthYear, today.getMonth(), today.getDate());
+          setDob(dobDate);
+          newScannedFields.add("dob");
+          if (parsedDoc.age.confidence < 70) {
+            newLowConfidenceFields.add("dob");
+          }
+        }
+      }
+
+      setScannedFields(newScannedFields);
+      setLowConfidenceFields(newLowConfidenceFields);
+
+      // Step 6: Save scanned document to backend
+      await createScannedDocument({
+        imageUrl: uploadResult.url,
+        extractedText: ocrResult.text,
+        parsedData: parsedDoc,
+        confidence: ocrResult.confidence,
+      });
+
+      Alert.alert(
+        "Document Scanned",
+        `Successfully extracted ${newScannedFields.size} field(s) from document.` +
+          (newLowConfidenceFields.size > 0
+            ? `\n\nNote: ${newLowConfidenceFields.size} field(s) have low confidence. Please verify.`
+            : "")
+      );
+    } catch (error) {
+      console.error("Scanning error:", error);
+      Alert.alert(
+        "Scan Failed",
+        "Unable to scan document. Please try again or enter details manually."
+      );
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  // Clear scan indicators when user manually edits
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (scannedFields.has("name")) {
+      const newScanned = new Set(scannedFields);
+      newScanned.delete("name");
+      setScannedFields(newScanned);
+      const newLowConfidence = new Set(lowConfidenceFields);
+      newLowConfidence.delete("name");
+      setLowConfidenceFields(newLowConfidence);
+    }
+  };
+
+  const handleDobChange = (date: Date | undefined) => {
+    setDob(date);
+    if (scannedFields.has("dob")) {
+      const newScanned = new Set(scannedFields);
+      newScanned.delete("dob");
+      setScannedFields(newScanned);
+      const newLowConfidence = new Set(lowConfidenceFields);
+      newLowConfidence.delete("dob");
+      setLowConfidenceFields(newLowConfidence);
+    }
+  };
+
   const { 
     data: users = [], 
     isLoading: isLoadingUsers, 
@@ -182,6 +313,8 @@ export default function CreatePatientScreen() {
     setRoomNumber("");
     setMedicalRecord("");
     setSelectedUserIds([]);
+    setScannedFields(new Set());
+    setLowConfidenceFields(new Set());
   };
 
   // Create patient mutation
@@ -219,7 +352,7 @@ export default function CreatePatientScreen() {
     setShowDatePicker(false); // Always hide picker first
     
     if (selectedDate) {
-      setDob(selectedDate);
+      handleDobChange(selectedDate);
     }
   };
 
@@ -265,25 +398,86 @@ export default function CreatePatientScreen() {
               <Text className="text-gray-600 text-center">Fill in the details and assign medical staff</Text>
             </View>
 
+            {/* Scan Document Button */}
+            <TouchableOpacity
+              className={`w-full py-4 rounded-xl items-center justify-center mb-6 border-2 ${
+                scanning
+                  ? "bg-emerald-50 border-emerald-300"
+                  : "bg-white border-emerald-500"
+              }`}
+              onPress={handleScanDocument}
+              disabled={scanning}
+            >
+              {scanning ? (
+                <View className="flex-row items-center">
+                  <ActivityIndicator size="small" color="#10B981" />
+                  <Text className="text-emerald-700 font-semibold text-lg ml-2">
+                    Scanning Document...
+                  </Text>
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Ionicons name="scan-outline" size={24} color="#10B981" />
+                  <Text className="text-emerald-700 font-semibold text-lg ml-2">
+                    Scan Patient Document
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
             {/* Form Fields */}
             <View className="space-y-4">
               {/* Name */}
               <View>
-                <Text className="text-gray-700 font-medium mb-2">Full Name *</Text>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-gray-700 font-medium">Full Name *</Text>
+                  {scannedFields.has("name") && (
+                    <View className="flex-row items-center">
+                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      <Text className="text-emerald-600 text-xs ml-1">From scan</Text>
+                      {lowConfidenceFields.has("name") && (
+                        <Text className="text-amber-600 text-xs ml-2">(Low confidence)</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
                 <TextInput
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900"
+                  className={`w-full px-4 py-4 bg-gray-50 border rounded-xl text-gray-900 ${
+                    scannedFields.has("name")
+                      ? lowConfidenceFields.has("name")
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-emerald-400 bg-emerald-50"
+                      : "border-gray-200"
+                  }`}
                   placeholder="Enter patient's full name"
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleNameChange}
                   autoCapitalize="words"
                 />
               </View>
               
               {/* Date of Birth */}
               <View>
-                <Text className="text-gray-700 font-medium mb-2">Date of Birth *</Text>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-gray-700 font-medium">Date of Birth *</Text>
+                  {scannedFields.has("dob") && (
+                    <View className="flex-row items-center">
+                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      <Text className="text-emerald-600 text-xs ml-1">From scan</Text>
+                      {lowConfidenceFields.has("dob") && (
+                        <Text className="text-amber-600 text-xs ml-2">(Low confidence)</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
                 <TouchableOpacity
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl flex-row justify-between items-center"
+                  className={`w-full px-4 py-4 bg-gray-50 border rounded-xl flex-row justify-between items-center ${
+                    scannedFields.has("dob")
+                      ? lowConfidenceFields.has("dob")
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-emerald-400 bg-emerald-50"
+                      : "border-gray-200"
+                  }`}
                   onPress={() => setShowDatePicker(true)}
                 >
                   <Text className={dob ? "text-gray-900" : "text-gray-400"}>
