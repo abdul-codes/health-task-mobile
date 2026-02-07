@@ -78,3 +78,62 @@ export interface Department {
   name: string;
   description: string;
 }
+
+// Document scanning types
+export enum DocumentType {
+  PATIENT_RECORD = "PATIENT_RECORD",
+  PRESCRIPTION = "PRESCRIPTION",
+  LAB_RESULT = "LAB_RESULT",
+  TASK_NOTE = "TASK_NOTE",
+}
+
+export interface ExtractedField {
+  name: string;
+  value: string;
+  confidence: number;
+  isVerified: boolean;
+  suggestions?: string[];
+}
+
+export interface ScannedDocument {
+  id: string;
+  imageUri: string;
+  extractedText: string;
+  confidence: number;
+  documentType: DocumentType;
+  fields: ExtractedField[];
+  createdAt: Date;
+  patientId?: string;
+  taskId?: string;
+  r2ObjectKey?: string;
+  isSynced: boolean;
+  isVerified: boolean;
+}
+
+export interface ScanResult {
+  success: boolean;
+  document?: ScannedDocument;
+  error?: string;
+}
+
+export interface OCRResult {
+  text: string;
+  confidence: number;
+  blocks: OCRBlock[];
+}
+
+export interface OCRBlock {
+  text: string;
+  confidence: number;
+  boundingBox: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ScanPermissionStatus {
+  camera: boolean;
+  canRequest: boolean;
+}
