@@ -19,11 +19,15 @@ import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import api from "../lib/api";
 import "../global.css";
 import { mmkvStorage } from "@/lib/asyncStorage";
+import { registerOfflineMutations } from "@/lib/offlineMutations";
 import { usePushNotifications } from "@/hooks/useNotification";
 
 const syncStoragePersister = createSyncStoragePersister({
   storage: mmkvStorage,
 });
+
+// Must run before the cache is restored so persisted offline writes can resume
+registerOfflineMutations(queryClient);
 
 //Error Boundary Fallback                                           */
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -69,6 +73,10 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: syncStoragePersister }}
+      onSuccess={() => {
+        // Replay writes that were queued offline before the app was closed
+        queryClient.resumePausedMutations();
+      }}
     >
       <ErrorBoundary
         FallbackComponent={ErrorFallback}

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { MUTATION_KEYS } from "@/lib/offlineMutations";
 import { Link } from "expo-router";
 import React, { useMemo } from "react";
 import {
@@ -22,7 +23,9 @@ const fetchNotifications = async (): Promise<Notification[]> => {
 const NotificationListItem = ({ item }: { item: Notification }) => {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: () => api.patch(`/notifications/${item.id}/read`),
+    mutationKey: MUTATION_KEYS.markNotificationRead,
+    mutationFn: (notificationId: string) =>
+      api.patch(`/notifications/${notificationId}/read`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
@@ -30,7 +33,7 @@ const NotificationListItem = ({ item }: { item: Notification }) => {
 
   const handlePress = () => {
     if (!item.isRead) {
-      mutation.mutate();
+      mutation.mutate(item.id);
     }
     // Navigation is handled by the Link wrapper
   };
@@ -125,6 +128,7 @@ export default function NotificationsScreen() {
   });
 
   const markAllAsReadMutation = useMutation({
+    mutationKey: MUTATION_KEYS.markAllNotificationsRead,
     mutationFn: () => api.patch("/notifications/read/all"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });

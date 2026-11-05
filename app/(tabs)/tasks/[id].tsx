@@ -15,6 +15,7 @@ import { z } from "zod";
 import { LinearGradient } from 'expo-linear-gradient';
 
 import api from "@/lib/api";
+import { MUTATION_KEYS, UpdateTaskStatusVariables } from "@/lib/offlineMutations";
 import { TaskPriority, TaskStatus, UserRole } from "@/lib/types";
 
 const userSchema = z.object({
@@ -322,7 +323,8 @@ export function useUpdateStatus(taskId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (status: TaskStatus) => {
+    mutationKey: MUTATION_KEYS.updateTaskStatus,
+    mutationFn: async ({ status }: UpdateTaskStatusVariables) => {
       const { data } = await api.patch(`/tasks/${taskId}/status`, { status });
       return taskSchema.parse(data);
     },
@@ -398,12 +400,12 @@ function ActionBar({ task }: { task: Task }) {
 
   if (availableActions.length === 1) {
     const action = availableActions[0];
-    const isThisActionPending = isPending && variables === action.next;
+    const isThisActionPending = isPending && variables?.status === action.next;
 
     return (
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
         <TouchableOpacity
-          onPress={() => mutate(action.next)}
+          onPress={() => mutate({ taskId: task.id, status: action.next })}
           disabled={isPending}
           className={`w-full items-center justify-center py-4 rounded-xl ${
             action.style === "primary" 
@@ -448,7 +450,7 @@ function ActionBar({ task }: { task: Task }) {
                   {
                     text: "Yes, Cancel",
                     style: "destructive",
-                    onPress: () => mutate(destructiveAction.next),
+                    onPress: () => mutate({ taskId: task.id, status: destructiveAction.next }),
                   },
                 ],
               );
@@ -474,7 +476,7 @@ function ActionBar({ task }: { task: Task }) {
         )}
         {primaryAction && (
           <TouchableOpacity
-            onPress={() => mutate(primaryAction.next)}
+            onPress={() => mutate({ taskId: task.id, status: primaryAction.next })}
             disabled={isPending}
             className={`flex-1 items-center justify-center py-4 rounded-xl bg-blue-600 ${
               isPending ? "opacity-70" : ""
@@ -482,7 +484,7 @@ function ActionBar({ task }: { task: Task }) {
             style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 }}
           >
             <View className="flex-row items-center">
-              {isPending && variables === primaryAction.next ? (
+              {isPending && variables?.status === primaryAction.next ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 primaryAction.icon && (
@@ -490,7 +492,7 @@ function ActionBar({ task }: { task: Task }) {
                 )
               )}
               <Text className="text-white font-bold text-base ml-2">
-                {isPending && variables === primaryAction.next
+                {isPending && variables?.status === primaryAction.next
                   ? "Processing..."
                   : primaryAction.label}
               </Text>
