@@ -163,7 +163,14 @@ api.interceptors.response.use(
         processQueue(null, newAccessToken);
         return api(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
+        // Only end the session when the server rejects the refresh token. A timeout or
+        // dropped connection keeps the user logged in so they can retry once back online.
+        const status = axios.isAxiosError(refreshError)
+          ? refreshError.response?.status
+          : undefined;
+        if (status === 401 || status === 403) {
+          useAuthStore.getState().logout();
+        }
         processQueue(refreshError, null);
         return Promise.reject(refreshError);
       } finally {
@@ -173,5 +180,17 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// Log out locally right away, and ask the server to revoke the refresh token.
+// Revocation is best effort: if offline, the token still expires on its own.
+export const signOut = (): void => {
+  const { refreshToken, logout } = useAuthStore.getState();
+  logout();
+  if (refreshToken) {
+    axios
+      .post(`${getBaseUrl()}/auth/logout`, { refreshToken }, { timeout: 5000 })
+      .catch(() => {});
+  }
+};
 
 export default api;

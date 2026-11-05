@@ -6,10 +6,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useAutoSync } from '@/hooks/useAutoSync';
+import { signOut } from '@/lib/api';
 import { UserRole } from '@/lib/types';
 
 const ProfileScreen = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { isOnline, pendingCount, failedCount, syncState, retryAllFailed } = useAutoSync();
 
@@ -24,7 +25,7 @@ const ProfileScreen = () => {
         },
         {
           text: "Logout",
-          onPress: logout,
+          onPress: signOut,
           style: "destructive",
         },
       ]

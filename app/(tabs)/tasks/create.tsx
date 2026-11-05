@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
+import { MUTATION_KEYS } from "@/lib/offlineMutations";
 import { TaskPriority, TaskStatus } from "@/lib/types";
 import { useDocumentScanner } from "@/hooks/useDocumentScanner";
 import { useOCR } from "@/hooks/useOCR";
@@ -178,7 +179,8 @@ export default function CreateTaskScreen() {
   }, [params.patientId, updateField]);
 
   // Mutation for creating a task
-  const { mutate: createTask, isPending: isSubmitting } = useMutation({
+  const { mutate: createTask, isPending: isSubmitting, isPaused } = useMutation({
+    mutationKey: MUTATION_KEYS.createTask,
     mutationFn: (taskData: CreateTaskInput) => api.post("/tasks", taskData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -213,6 +215,18 @@ export default function CreateTaskScreen() {
       Alert.alert("Error", message);
     },
   });
+
+  // Offline: the request is queued and sent when the connection returns (see lib/offlineMutations)
+  useEffect(() => {
+    if (!isPaused) return;
+    Alert.alert("Saved offline", "The task will be sent when you're back online.");
+    resetForm();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/tasks");
+    }
+  }, [isPaused]);
 
   const resetForm = () => {
     setFormData({

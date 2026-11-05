@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,7 @@ import DateTimePicker, { type DateTimePickerEvent } from "@react-native-communit
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import api from "@/lib/api";
+import { MUTATION_KEYS } from "@/lib/offlineMutations";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocumentScanner } from "@/hooks/useDocumentScanner";
 import { useOCR } from "@/hooks/useOCR";
@@ -319,6 +320,7 @@ export default function CreatePatientScreen() {
 
   // Create patient mutation
   const createPatientMutation = useMutation({
+    mutationKey: MUTATION_KEYS.createPatient,
     mutationFn: (data: PatientFormData) => api.post("/patients", data),
     onSuccess: () => {
       // Invalidate patient queries
@@ -355,6 +357,18 @@ export default function CreatePatientScreen() {
       handleDobChange(selectedDate);
     }
   };
+
+  // Offline: the request is queued and sent when the connection returns (see lib/offlineMutations)
+  useEffect(() => {
+    if (!createPatientMutation.isPaused) return;
+    Alert.alert("Saved offline", "The patient will be sent when you're back online.");
+    resetForm();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/patients');
+    }
+  }, [createPatientMutation.isPaused, router]);
 
   // Form submission handler
   const handleCreatePatient = () => {

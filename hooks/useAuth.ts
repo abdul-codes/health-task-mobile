@@ -1,4 +1,4 @@
-import { mmkvStorage } from "@/lib/asyncStorage";
+import { secureAuthStorage } from "@/lib/secureStorage";
 import { queryClient } from "@/lib/queryClient";
 import { User, UserRole } from "@/lib/types";
 import { create } from "zustand";
@@ -44,7 +44,8 @@ const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
-      storage: createJSONStorage(() => mmkvStorage),
+      // Tokens live in the keychain / keystore, never in plain MMKV
+      storage: createJSONStorage(() => secureAuthStorage),
     },
   ),
 );
